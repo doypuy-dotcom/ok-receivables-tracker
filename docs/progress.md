@@ -56,3 +56,4 @@ cp .env.example .env.local   # แล้วใส่ค่า URL + publishable 
 npm install
 npm run dev
 ```
+- Live URL: https://ok-receivables.vercel.app (deployed on Vercel, tested on iPhone via 5G)
