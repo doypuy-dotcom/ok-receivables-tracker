@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ตารางยอดค้างชำระ — เดโม</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F5F4; --surface:#FFFFFF; --surface-2:#F7F9F9; --ink:#17242C; --muted:#5A6971; --line:#D5DCE0;
+  --primary:#1C5DA3; --primary-ink:#FFFFFF; --primary-soft:#E6EEF8;
+  --amber:#C98E00; --amber-soft:#FFF5D9; --red:#C2382C; --red-soft:#FBEBE9; --green:#2A8553; --green-soft:#E6F3EB;
+  --track:#E3E8EB; --shadow:0 1px 2px rgba(23,36,44,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111A1F; --surface:#18232A; --surface-2:#1D2930; --ink:#E5ECEF; --muted:#98A7AF; --line:#2B3A42;
+    --primary:#6EA6E6; --primary-ink:#0E1A22; --primary-soft:#1E3043;
+    --amber:#E6B23A; --amber-soft:#3A3117; --red:#F07A6E; --red-soft:#3D2220; --green:#5CC28A; --green-soft:#183326;
+    --track:#2A373E; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111A1F; --surface:#18232A; --surface-2:#1D2930; --ink:#E5ECEF; --muted:#98A7AF; --line:#2B3A42;
+  --primary:#6EA6E6; --primary-ink:#0E1A22; --primary-soft:#1E3043;
+  --amber:#E6B23A; --amber-soft:#3A3117; --red:#F07A6E; --red-soft:#3D2220; --green:#5CC28A; --green-soft:#183326;
+  --track:#2A373E; --shadow:none;
+}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Anuphan","Noto Sans Thai","Leelawadee UI","Tahoma",system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--primary);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 16px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.logo{flex:none;width:38px;height:38px;border-radius:9px;background:var(--primary);color:var(--primary-ink);display:grid;place-items:center;font-weight:700;letter-spacing:.5px}
+.brand-name{font-weight:600;font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-name small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.spacer{flex:1}
+.user-btn{border:1px solid var(--primary);background:transparent;color:var(--primary);border-radius:8px;padding:6px 10px;font-size:14px;font-weight:600;white-space:nowrap}
+.lang{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.lang button{border:0;background:transparent;padding:6px 10px;font-size:13px;font-weight:600;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.user-menu{position:relative}
+.user-menu .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:6px}
+.menu button:hover{background:var(--surface-2)}
+
+/* page */
+main{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+.page-title{margin:4px 0 2px;font-size:clamp(24px,4vw,32px);font-weight:700;letter-spacing:-.2px}
+.page-sub{margin:0 0 16px;color:var(--muted)}
+.controls{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-start;box-shadow:var(--shadow)}
+.ctl-left,.ctl-right{display:grid;gap:10px}
+.ctl-right{justify-items:end}
+@media (max-width:640px){.ctl-right{justify-items:start}}
+.controls .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:13px;background:var(--surface-2);border:1px solid var(--line);color:var(--muted)}
+.pill.role{background:var(--primary-soft);border-color:transparent;color:var(--primary);font-weight:600}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn.danger.armed{background:var(--red);color:var(--surface)}
+.btn.ghost{border-color:transparent;background:transparent}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+
+/* month filter */
+.mfilter{position:relative}
+.mfilter summary{list-style:none;border:1px solid var(--line);border-radius:10px;padding:8px 14px;background:var(--surface);font-size:16px;display:flex;align-items:center;gap:10px;cursor:pointer;min-width:280px}
+.mfilter .cap{display:block;font-size:12px;color:var(--muted);line-height:1.2}
+.mfilter .val{display:block;font-weight:600;line-height:1.3}
+.mfilter summary::-webkit-details-marker{display:none}
+.mfilter summary::after{content:"";margin-left:auto;border:5px solid transparent;border-top-color:var(--muted);transform:translateY(3px)}
+.mfilter[open] summary::after{transform:rotate(180deg) translateY(3px)}
+.mfilter .panel{position:absolute;z-index:15;top:calc(100% + 6px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.mfilter label{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;cursor:pointer}
+.mfilter label:hover{background:var(--surface-2)}
+.mfilter hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.mfilter input{width:18px;height:18px;accent-color:var(--primary)}
+
+/* summary */
+.totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0 6px}
+.total{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.total span{display:block;color:var(--muted);font-size:13px}
+.total strong{font-size:20px}
+.total.warn strong{color:var(--red)}
+
+/* sections */
+.section-h{margin:22px 0 10px;font-size:15px;font-weight:600;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+.carry{border:1px solid var(--red);border-radius:14px;background:var(--red-soft);padding:0 0 2px}
+.carry-note{display:flex;gap:8px;align-items:flex-start;color:var(--red);font-weight:600;font-size:14px;padding:9px 14px}
+.carry-note::before{content:"!";flex:none;width:20px;height:20px;border-radius:50%;background:var(--red);color:var(--surface);display:grid;place-items:center;font-size:13px;margin-top:1px}
+.carry .card{border:0;border-radius:0 0 13px 13px;margin:0 2px}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--amber);border-radius:12px;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:var(--primary);border-left-color:inherit}
+.card.s-over{border-left-color:var(--red)}
+.card.s-paid{border-left-color:var(--green)}
+.card.s-open{border-left-color:var(--amber)}
+.card-head{padding:12px 14px 0;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+.card-head h3{margin:0;font-size:17px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 8px}
+.card-body{display:grid;grid-template-columns:1fr;gap:12px;padding:12px 14px 14px}
+@media (min-width:640px){.card-body{grid-template-columns:260px 1fr;padding:16px 18px 18px}}
+.amount-col{display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding-right:4px}
+@media (min-width:640px){.amount-col{border-right:1px solid var(--line);padding-right:18px;justify-content:center}}
+.amount-col .lbl{font-size:13px;color:var(--muted)}
+.amount{font-size:clamp(26px,3vw,30px);font-weight:700;line-height:1.15;letter-spacing:-.3px;white-space:nowrap}
+.unit{font-size:14px;font-weight:600;color:var(--muted);margin-top:2px}
+.link{color:var(--primary);font-weight:600;font-size:14px;background:none;border:0;padding:0;text-align:left}
+.paid-big{font-size:30px;font-weight:700;color:var(--green)}
+.status-tag{display:inline-block;font-size:12px;font-weight:700;border:1px solid var(--ink);border-radius:4px;padding:0 6px;margin-bottom:6px}
+.bar{margin-bottom:10px}
+.bar:last-child{margin-bottom:0}
+.bar-top{display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
+.bar-top .pct{font-weight:700;flex:none}
+.track{height:9px;background:var(--track);border-radius:99px;overflow:hidden;margin:4px 0 3px}
+.fill{height:100%;border-radius:99px;background:var(--amber)}
+.fill.over{background:var(--red)}
+.fill.money{background:var(--green)}
+.sub{font-size:13px;color:var(--muted)}
+.sub.over,.remain{color:var(--red);font-weight:600}
+.remain{font-size:14px;margin-top:4px}
+.paid-info{font-size:14px;display:grid;gap:4px}
+.paid-info .late{color:var(--red)}
+.paid-info .ok{color:var(--green)}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 16px;text-align:center;color:var(--muted)}
+
+/* detail */
+.back{margin-bottom:12px}
+.acct{background:var(--primary);color:var(--primary-ink);border-radius:16px;padding:18px;display:grid;gap:4px}
+.acct .name{font-size:18px;font-weight:700}
+.acct .meta{opacity:.85;font-size:14px}
+.acct .bal{font-size:clamp(32px,6vw,42px);font-weight:700;line-height:1.1;margin-top:8px}
+.acct .bal small{font-size:16px;font-weight:500;opacity:.85;margin-left:4px}
+.acct .of{opacity:.85;font-size:14px}
+.detail-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+@media (min-width:900px){.detail-grid{grid-template-columns:1fr 1.2fr}}
+.panel-box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.panel-box h2{font-size:16px;margin:0 0 10px}
+.txn-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.txn-head h2{margin:0}
+.txn-head select{margin-left:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--surface)}
+.txns{list-style:none;margin:0;padding:0}
+.txn{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line)}
+.txn:last-child{border-bottom:0}
+.txn .dot{flex:none;width:10px;height:10px;border-radius:50%;border:2px solid var(--muted)}
+.txn .what{flex:1;min-width:0}
+.txn .what b{display:block;font-weight:600}
+.txn .what span{font-size:13px;color:var(--muted)}
+.txn .amt{color:var(--green);font-weight:700;white-space:nowrap}
+.txn.editable{cursor:pointer;border-radius:8px}
+.txn.editable:hover{background:var(--surface-2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600}
+
+/* login */
+.login{min-height:100%;display:grid;place-items:center;padding:24px 16px}
+.login-box{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px}
+.login-box h1{margin:12px 0 4px;font-size:22px}
+.login-box p{margin:0 0 18px;color:var(--muted)}
+.role-btn{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:14px;margin-bottom:10px}
+.role-btn:hover{border-color:var(--primary)}
+.role-btn b{display:block;font-size:16px}
+.role-btn span{font-size:14px;color:var(--muted)}
+
+/* dialog */
+dialog{border:0;border-radius:16px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 32px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(10,18,24,.5)}
+.dlg-h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface)}
+.dlg-h h2{margin:0;font-size:18px;flex:1}
+.dlg-b{padding:16px 18px;display:grid;gap:12px}
+.dlg-f{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:12px 18px 18px}
+.dlg-f .left{margin-right:auto}
+.field{display:grid;gap:4px}
+.field label,.field .lab{font-size:14px;font-weight:600}
+.field input,.field select{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--surface);width:100%}
+.field .hint{font-size:12.5px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:flex;gap:8px}
+.seg label{flex:1;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer;font-weight:500}
+.seg input{accent-color:var(--primary)}
+.seg label:has(input:checked){border-color:var(--primary);background:var(--primary-soft)}
+.err{color:var(--red);font-size:14px;font-weight:600;min-height:1em}
+.preview{background:var(--surface-2);border-radius:8px;padding:8px 10px;font-size:14px}
+.co-list{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.co-list li{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.co-list li:last-child{border-bottom:0}
+.co-list span{color:var(--muted)}
+.close-x{border:0;background:transparent;font-size:22px;line-height:1;padding:4px 8px;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.demo-note{max-width:1120px;margin:0 auto;padding:0 16px 24px;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<dialog id="dlg" aria-labelledby="dlg-title"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- date + money helpers ---------- */
+const TODAY = '2026-10-03';            // demo clock
+const DAY = 86400000;
+const toMs = s => Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10));
+const diff = (a,b) => Math.round((toMs(b)-toMs(a))/DAY);       // b - a in days
+const addDays = (s,n) => new Date(toMs(s)+n*DAY).toISOString().slice(0,10);
+const mk = s => s.slice(0,7);
+const clamp = x => Math.max(0, Math.min(1, x));
+const r2 = x => Math.round(x*100)/100;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+/* ---------- i18n ---------- */
+const T = {
+ th:{
+  company:'โอ เค เอ็นจิเนียริ่ง ไฮเท็ค', companySub:'บริษัท โอ เค เอ็นจิเนียริ่ง ไฮเท็ค จำกัด',
+  owner:'เจ้าของบริษัท', sales:'ฝ่ายขาย', ownerName:'เจ้าของ (เดโม)', salesName:'พนักงานขาย (เดโม)',
+  loginTitle:'เข้าสู่ระบบ', loginHint:'เดโม: เลือกผู้ใช้เพื่อดูหน้าจอของแต่ละตำแหน่ง',
+  ownerDesc:'ดูตารางยอดค้าง ประวัติการจ่าย และสรุปผล', salesDesc:'เพิ่มและแก้ไขยอดค้าง การจ่าย และรายชื่อบริษัท',
+  switchUser:'สลับผู้ใช้', logout:'ออกจากระบบ',
+  title:'ตารางยอดค้างชำระ', sub:'ยอดค้างชำระของแต่ละบริษัท แยกตามเดือนที่ครบกำหนด',
+  role:'ตำแหน่ง: {r}', asOf:'ข้อมูล ณ {d}',
+  monthCap:'เดือนที่ครบกำหนด', allMonths:'ทุกเดือน', unpaidOnly:'เฉพาะที่ยังค้างชำระ', monthsSel:'{n} เดือน',
+  addRec:'เพิ่มยอดค้าง', companies:'รายชื่อบริษัท',
+  dueSel:'ต้องได้รับในเดือนที่เลือก', carryTotal:'ยอดค้างข้ามเดือน', items:'{n} รายการ',
+  carryH:'ยอดค้างข้ามเดือน', listH:'ครบกำหนดในเดือนที่เลือก',
+  carryNote:'ยอดค้างข้ามเดือนของเดือน {m} ค้าง {a} บาท',
+  credit:'เครดิต {n} วัน', acct:'บัญชีเดือน {m}',
+  outstanding:'ยอดค้างชำระ', baht:'บาท', viewDetail:'ดูรายละเอียด', status:'สถานะ',
+  actualDue:'ครบกำหนดจริง {d}', creditDue:'ครบกำหนดเครดิต {d}',
+  left:'เหลืออีก {n} วัน ตาม{k}', today:'ครบกำหนดวันนี้', over:'เลยครบกำหนด {n} วัน จาก{k}',
+  kActual:'วันจริง', kCredit:'วันเครดิต',
+  paidOf:'จ่ายแล้ว {p} จาก {t} บาท', remain:'เหลือ {a} บาท',
+  paid:'จ่ายแล้ว', summary:'สรุปผล', paidOn:'จ่ายครบเมื่อ {d}',
+  onTime:'ตรงเวลา ({k})', late:'ช้ากว่ากำหนด {n} วัน ({k})',
+  empty:'ไม่มียอดค้างที่ครบกำหนดในเดือนที่เลือก', emptySales:'กด "เพิ่มยอดค้าง" เพื่อบันทึกรายการแรก',
+  back:'กลับไปตาราง', totalAmt:'ยอดรวม {a} บาท', incoming:'รายการเงินเข้า', all:'ทั้งหมด',
+  addPay:'เพิ่มการจ่าย', editRec:'แก้ไขยอดค้าง', transfer:'โอน', cheque:'เช็ค (ขึ้นเงิน)',
+  noPay:'ยังไม่มีการจ่ายสำหรับยอดนี้', noPayMonth:'ไม่มีรายการเงินเข้าในเดือนนี้',
+  info:'ข้อมูลยอดค้าง', fCompany:'บริษัท', fCompanyHint:'พิมพ์เพื่อค้นหา หรือพิมพ์ชื่อใหม่เพื่อเพิ่มบริษัท',
+  fAcct:'บัญชีเดือน (เดือนที่ลูกค้าซื้อของ)', fTotal:'ยอดรวม (บาท)', fCdays:'จำนวนวันเครดิต',
+  fCstart:'วันเริ่มนับเครดิต', fAstart:'วันเริ่มนับวันจริง', fAdue:'วันครบกำหนดจริง',
+  fAdueHint:'วันที่คาดว่าจะได้เงิน ตามรอบจ่ายของบริษัทลูกค้า', previewCredit:'ครบกำหนดเครดิต: {d}',
+  save:'บันทึก', cancel:'ปิด', cancelRec:'ยกเลิกยอดค้างนี้', cancelPay:'ยกเลิกรายการจ่ายนี้',
+  confirmCancel:'ยืนยันการยกเลิก? รายการจะถูกซ่อนแต่ยังเก็บประวัติไว้', confirmAgain:'กดอีกครั้งเพื่อยืนยันการยกเลิก',
+  fAmt:'ยอดเงิน (บาท)', fMethod:'วิธีจ่าย', fDateT:'วันที่เงินเข้า', fDateC:'วันที่เช็คขึ้นเงิน', fTime:'เวลา',
+  editPay:'แก้ไขรายการจ่าย', balanceNow:'ยอดคงเหลือตอนนี้ {a} บาท',
+  eRequired:'กรอกให้ครบทุกช่อง', eTotal:'ยอดรวมต้องมากกว่า 0', eDays:'จำนวนวันเครดิตต้องมากกว่า 0',
+  eDue:'วันครบกำหนดจริงต้องไม่ก่อนวันเริ่มนับวันจริง', eAmt:'ยอดเงินต้องมากกว่า 0', eOver:'ยอดเกินยอดคงเหลือ (เหลือ {a} บาท)',
+  savedRec:'บันทึกยอดค้างแล้ว', savedPay:'บันทึกการจ่ายแล้ว', cancelled:'ยกเลิกรายการแล้ว',
+  coH:'รายชื่อบริษัท', coAdd:'เพิ่มบริษัท', coName:'ชื่อบริษัทใหม่', coOpen:'ค้าง {n} รายการ', coExists:'มีบริษัทนี้อยู่แล้ว', coAdded:'เพิ่มบริษัทแล้ว',
+  sumH:'สรุปผล', sumPaidOn:'จ่ายครบวันที่', sumCount:'จำนวนครั้งที่จ่าย', sumVsActual:'เทียบวันครบกำหนดจริง', sumVsCredit:'เทียบวันครบกำหนดเครดิต', times:'{n} ครั้ง',
+  exportDemo:'เดโม: ในเวอร์ชันจริงปุ่มนี้จะบันทึกตารางเป็นไฟล์ {f}',
+  demoNote:'เดโม: ข้อมูลและชื่อบริษัทเป็นข้อมูลสมมติ วันนี้ของเดโม = 3 ต.ค. 2569 ข้อมูลที่แก้ไขจะหายเมื่อรีเฟรชหน้า',
+ },
+ en:{
+  company:'O.K. Engineering Hi-Tech', companySub:'O.K. Engineering Hi-Tech Co., Ltd.',
+  owner:'Owner', sales:'Sales', ownerName:'Owner (demo)', salesName:'Sales staff (demo)',
+  loginTitle:'Sign in', loginHint:'Demo: pick a user to see each role’s screens',
+  ownerDesc:'View receivables, payment history and summaries', salesDesc:'Add and edit receivables, payments and companies',
+  switchUser:'Switch user', logout:'Sign out',
+  title:'Outstanding payments', sub:'What each company still owes, grouped by due month',
+  role:'Role: {r}', asOf:'Data as of {d}',
+  monthCap:'Due month', allMonths:'All months', unpaidOnly:'Unpaid only', monthsSel:'{n} months',
+  addRec:'Add receivable', companies:'Companies',
+  dueSel:'Due in selected months', carryTotal:'Carried over from earlier months', items:'{n} items',
+  carryH:'Carried over', listH:'Due in selected months',
+  carryNote:'Carried over from {m}: {a} THB still unpaid',
+  credit:'Credit {n} days', acct:'Purchase month {m}',
+  outstanding:'Outstanding', baht:'THB', viewDetail:'View details', status:'Status',
+  actualDue:'Expected payment {d}', creditDue:'Credit due {d}',
+  left:'{n} days left ({k})', today:'Due today', over:'{n} days overdue ({k})',
+  kActual:'expected date', kCredit:'credit terms',
+  paidOf:'Paid {p} of {t} THB', remain:'{a} THB left',
+  paid:'Paid', summary:'Summary', paidOn:'Paid in full on {d}',
+  onTime:'On time ({k})', late:'{n} days late ({k})',
+  empty:'Nothing is due in the selected months', emptySales:'Use "Add receivable" to record the first one',
+  back:'Back to list', totalAmt:'Total {a} THB', incoming:'Payments received', all:'All',
+  addPay:'Add payment', editRec:'Edit receivable', transfer:'Transfer', cheque:'Cheque (cleared)',
+  noPay:'No payments yet for this receivable', noPayMonth:'No payments in this month',
+  info:'Receivable details', fCompany:'Company', fCompanyHint:'Type to search, or type a new name to add a company',
+  fAcct:'Purchase month', fTotal:'Total (THB)', fCdays:'Credit days',
+  fCstart:'Credit start date', fAstart:'Expected-date start', fAdue:'Expected payment date',
+  fAdueHint:'When the money is expected, based on the customer’s payment cycle', previewCredit:'Credit due: {d}',
+  save:'Save', cancel:'Close', cancelRec:'Cancel this receivable', cancelPay:'Cancel this payment',
+  confirmCancel:'Cancel this item? It will be hidden but its history is kept.', confirmAgain:'Click again to confirm',
+  fAmt:'Amount (THB)', fMethod:'Method', fDateT:'Date received', fDateC:'Cheque cleared date', fTime:'Time',
+  editPay:'Edit payment', balanceNow:'Current balance {a} THB',
+  eRequired:'Fill in every field', eTotal:'Total must be more than 0', eDays:'Credit days must be more than 0',
+  eDue:'Expected payment date can’t be before its start date', eAmt:'Amount must be more than 0', eOver:'Amount is more than the balance ({a} THB left)',
+  savedRec:'Receivable saved', savedPay:'Payment saved', cancelled:'Item cancelled',
+  coH:'Companies', coAdd:'Add company', coName:'New company name', coOpen:'{n} open', coExists:'This company already exists', coAdded:'Company added',
+  sumH:'Summary', sumPaidOn:'Paid in full on', sumCount:'Number of payments', sumVsActual:'Against expected date', sumVsCredit:'Against credit due date', times:'{n}',
+  exportDemo:'Demo: the real app will save this list as a {f} file',
+  demoNote:'Demo: all data and company names are made up. Demo “today” is 3 Oct 2026. Changes are lost on refresh.',
+ }
+};
+const t = (k, v={}) => (T[S.lang][k] ?? k).replace(/\{(\w+)\}/g, (_,x) => v[x] ?? '');
+const loc = () => S.lang === 'th' ? 'th-TH' : 'en-GB';
+const fmtD = (s, wd) => new Date(toMs(s)).toLocaleDateString(loc(), {timeZone:'UTC', day:'numeric', month:'short', year:'numeric', ...(wd?{weekday:'short'}:{})});
+const fmtM = (key, long) => new Date(toMs(key+'-01')).toLocaleDateString(loc(), {timeZone:'UTC', month: long?'long':'short', year:'numeric'});
+const fmtStamp = iso => fmtD(iso.slice(0,10)) + ' ' + iso.slice(11,16) + (S.lang==='th'?' น.':'');
+
+/* ---------- demo data (fictional) ---------- */
+const DB = {
+ companies:[
+  {id:'c1',name:'บ. สยามไลท์ติ้ง จก.'},
+  {id:'c2',name:'บ. ประเสริฐการช่าง จก.'},
+  {id:'c3',name:'หจก. ทองดีวิศวกรรม'},
+  {id:'c4',name:'บ. รุ่งเรืองอีเลคทริค จก.'},
+  {id:'c5',name:'บ. เมืองทองคอนสตรัคชั่น จก.'},
+  {id:'c6',name:'บ. นครไฟฟ้า จก. (สาขา 1)'},
+  {id:'c7',name:'บ. นครไฟฟ้า จก. (สาขา 2)'},
+  {id:'c8',name:'บ. ไทยพาวเวอร์ซัพพลาย จก.'},
+ ],
+ receivables:[
+  {id:'r1', companyId:'c5', acct:'2026-06', total:532875.03, creditDays:60, creditStart:'2026-07-01', actualStart:'2026-07-01', actualDue:'2026-09-10'},
+  {id:'r9', companyId:'c2', acct:'2026-06', total:34665.86,  creditDays:90, creditStart:'2026-07-01', actualStart:'2026-07-01', actualDue:'2026-09-25'},
+  {id:'r12',companyId:'c3', acct:'2026-06', total:25000,     creditDays:60, creditStart:'2026-07-01', actualStart:'2026-07-01', actualDue:'2026-09-15'},
+  {id:'r2', companyId:'c1', acct:'2026-07', total:77039.90,  creditDays:30, creditStart:'2026-08-01', actualStart:'2026-08-01', actualDue:'2026-10-01'},
+  {id:'r11',companyId:'c1', acct:'2026-08', total:50000,     creditDays:30, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-10-01'},
+  {id:'r6', companyId:'c6', acct:'2026-08', total:6359.65,   creditDays:60, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-10-05'},
+  {id:'r5', companyId:'c4', acct:'2026-07', total:223512.31, creditDays:60, creditStart:'2026-08-01', actualStart:'2026-08-01', actualDue:'2026-10-07'},
+  {id:'r4', companyId:'c3', acct:'2026-07', total:10000,     creditDays:60, creditStart:'2026-08-10', actualStart:'2026-08-10', actualDue:'2026-10-20'},
+  {id:'r3', companyId:'c2', acct:'2026-08', total:88236.33,  creditDays:60, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-10-26'},
+  {id:'r7', companyId:'c7', acct:'2026-08', total:15498.09,  creditDays:60, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-10-26'},
+  {id:'r10',companyId:'c4', acct:'2026-08', total:120000,    creditDays:60, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-11-05'},
+  {id:'r8', companyId:'c8', acct:'2026-08', total:41578.56,  creditDays:60, creditStart:'2026-09-01', actualStart:'2026-09-01', actualDue:'2026-11-10'},
+ ],
+ payments:[
+  {id:'p1', recId:'r1', amount:100000,   date:'2026-09-15', time:'10:42', method:'transfer'},
+  {id:'p2', recId:'r9', amount:20000,    date:'2026-09-28', time:'14:05', method:'cheque'},
+  {id:'p3', recId:'r12',amount:25000,    date:'2026-09-14', time:'09:20', method:'transfer'},
+  {id:'p4', recId:'r2', amount:40000,    date:'2026-09-20', time:'11:15', method:'transfer'},
+  {id:'p5', recId:'r2', amount:37039.90, date:'2026-10-02', time:'13:30', method:'cheque'},
+  {id:'p6', recId:'r4', amount:5000,     date:'2026-09-18', time:'16:48', method:'transfer'},
+ ],
+ audit:[],   // kept behind the scenes; never shown in the UI
+};
+let seq = 100;
+const nid = p => p + (++seq);
+
+/* ---------- state ---------- */
+const S = { lang:'th', role:null, view:'list', recId:null, months:new Set(['2026-10']), unpaidOnly:false, payMonth:'all', lastUpdated:'2026-10-02T17:39', userMenu:false };
+
+/* ---------- calculations ---------- */
+const company = id => DB.companies.find(c => c.id === id);
+const paysOf = recId => DB.payments.filter(p => p.recId === recId && !p.cancelled).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+function calc(r){
+  const pays = paysOf(r.id);
+  const paid = r2(pays.reduce((s,p) => s + p.amount, 0));
+  const balance = r2(r.total - paid);
+  const creditDue = addDays(r.creditStart, r.creditDays);
+  const isPaid = balance <= 0.004;
+  const paidDate = isPaid && pays.length ? pays[pays.length-1].date : null;
+  return {
+    pays, paid, balance, creditDue, isPaid, paidDate,
+    actualPct: clamp(diff(r.actualStart, TODAY) / Math.max(1, diff(r.actualStart, r.actualDue))),
+    creditPct: clamp(diff(r.creditStart, TODAY) / Math.max(1, r.creditDays)),
+    moneyPct: clamp(paid / r.total),
+    toActual: diff(TODAY, r.actualDue),
+    toCredit: diff(TODAY, creditDue),
+    carried: !isPaid && mk(r.actualDue) < mk(TODAY),
+  };
+}
+const liveRecs = () => DB.receivables.filter(r => !r.cancelled);
+const pct = x => Math.round(x*100);
+
+function audit(action, oldV, newV){
+  DB.audit.push({at:new Date().toISOString(), user:S.role, action, old:oldV ? structuredClone(oldV) : null, new:newV ? structuredClone(newV) : null});
+  const now = new Date();
+  S.lastUpdated = TODAY + 'T' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+
+/* ---------- rendering ---------- */
+const root = document.getElementById('root');
+function render(){
+  document.documentElement.lang = S.lang;
+  if(!S.role){ root.innerHTML = loginView(); return; }
+  root.innerHTML = headerView() + '<main>' + (S.view === 'detail' ? detailView() : listView()) + '</main><p class="demo-note">' + t('demoNote') + '</p>';
+}
+
+function loginView(){
+  return `<div class="login"><div class="login-box">
+    <div class="brand"><div class="logo">OK</div><div class="brand-name">${t('company')}<small>${t('companySub')}</small></div></div>
+    <h1>${t('loginTitle')}</h1><p>${t('loginHint')}</p>
+    <button class="role-btn" data-act="login" data-role="owner"><b>${t('owner')}</b><span>${t('ownerDesc')}</span></button>
+    <button class="role-btn" data-act="login" data-role="sales"><b>${t('sales')}</b><span>${t('salesDesc')}</span></button>
+    ${langToggle()}
+  </div></div>`;
+}
+function langToggle(){
+  return `<div class="lang" role="group" aria-label="Language">
+    <button data-act="lang" data-lang="en" aria-pressed="${S.lang==='en'}">ENG</button>
+    <button data-act="lang" data-lang="th" aria-pressed="${S.lang==='th'}">ไทย</button></div>`;
+}
+function headerView(){
+  const name = S.role === 'owner' ? t('ownerName') : t('salesName');
+  return `<header class="topbar"><div class="topbar-in">
+    <div class="brand"><div class="logo">OK</div><div class="brand-name">${t('company')}<small>${t('title')}</small></div></div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <button class="user-btn" data-act="usermenu" aria-expanded="${S.userMenu}">${name} ▾</button>
+      ${S.userMenu ? `<div class="menu"><button data-act="logout">${t('switchUser')}</button></div>` : ''}
+    </div>
+    ${langToggle()}
+  </div></header>`;
+}
+
+function monthOptions(){
+  return [...new Set(liveRecs().map(r => mk(r.actualDue)))].sort();
+}
+function filterLabel(){
+  if(S.months.size === 0) return t('allMonths');
+  if(S.months.size === 1) return fmtM([...S.months][0], true);
+  return t('monthsSel', {n:S.months.size});
+}
+
+function listView(){
+  const all = liveRecs().map(r => ({r, c:calc(r)}));
+  const carried = all.filter(x => x.c.carried).sort((a,b) => a.r.actualDue.localeCompare(b.r.actualDue));
+  let rest = all.filter(x => !x.c.carried && (S.months.size === 0 || S.months.has(mk(x.r.actualDue))));
+  if(S.unpaidOnly) rest = rest.filter(x => !x.c.isPaid);
+  rest.sort((a,b) => (a.c.isPaid - b.c.isPaid) || a.r.actualDue.localeCompare(b.r.actualDue));
+  const dueSum = rest.reduce((s,x) => s + x.c.balance, 0);
+  const carrySum = carried.reduce((s,x) => s + x.c.balance, 0);
+  const isSales = S.role === 'sales';
+  const opts = monthOptions().map(m => `<label><input type="checkbox" data-month="${m}" ${S.months.has(m)?'checked':''}>${fmtM(m,true)}</label>`).join('');
+
+  return `<h1 class="page-title">${t('title')}</h1><p class="page-sub">${t('sub')}</p>
+  <section class="controls" aria-label="filters">
+    <div class="ctl-left">
+    <details class="mfilter"><summary>📅 <span><span class="cap">${t('monthCap')}</span><span class="val">${filterLabel()}</span></span></summary><div class="panel">
+      <label><input type="checkbox" data-month="__all" ${S.months.size===0?'checked':''}>${t('allMonths')}</label>
+      <hr>${opts}<hr>
+      <label><input type="checkbox" data-unpaid ${S.unpaidOnly?'checked':''}>${t('unpaidOnly')}</label>
+    </div></details>
+    <div class="meta">
+      <span class="pill role">${t('role',{r: S.role==='owner'?t('owner'):t('sales')})}</span>
+    </div>
+    </div>
+    <div class="ctl-right">
+    <span class="pill num">🕘 ${t('asOf',{d:fmtStamp(S.lastUpdated)})}</span>
+    <div class="actions">
+      ${isSales ? `<button class="btn" data-act="companies">${t('companies')}</button><button class="btn primary" data-act="addRec">+ ${t('addRec')}</button>` : ''}
+      <button class="btn" data-act="export" data-f="JPG">JPG</button>
+      <button class="btn primary" data-act="export" data-f="PDF">PDF</button>
+    </div>
+    </div>
+  </section>
+  <div class="totals">
+    <div class="total"><span>${t('dueSel')}</span><strong class="num">${money(dueSum)}</strong> ${t('baht')}<span>${t('items',{n:rest.filter(x=>!x.c.isPaid).length})}</span></div>
+    <div class="total ${carrySum>0?'warn':''}"><span>${t('carryTotal')}</span><strong class="num">${money(carrySum)}</strong> ${t('baht')}<span>${t('items',{n:carried.length})}</span></div>
+  </div>
+  ${carried.length ? `<h2 class="section-h">${t('carryH')}</h2><div class="grid">${carried.map(x =>
+      `<div class="carry"><div class="carry-note">${t('carryNote',{m:fmtM(mk(x.r.actualDue),true), a:money(x.c.balance)})}</div>${cardView(x.r,x.c)}</div>`).join('')}</div>` : ''}
+  <h2 class="section-h">${t('listH')}</h2>
+  ${rest.length ? `<div class="grid">${rest.map(x => cardView(x.r,x.c)).join('')}</div>`
+     : `<div class="empty">${t('empty')}${isSales?'<br>'+t('emptySales'):''}</div>`}`;
+}
+
+function dayLine(n, kind){
+  const k = t(kind === 'a' ? 'kActual' : 'kCredit');
+  if(n > 0) return `<div class="sub">${t('left',{n, k})}</div>`;
+  if(n === 0) return `<div class="sub over">${t('today')}</div>`;
+  return `<div class="sub over">${t('over',{n:-n, k})}</div>`;
+}
+function barsView(r, c){
+  const aOver = c.toActual < 0, cOver = c.toCredit < 0;
+  return `
+   <div class="bar"><div class="bar-top"><span>${t('actualDue',{d:fmtD(r.actualDue,true)})}</span><span class="pct num">${pct(c.actualPct)}%</span></div>
+     <div class="track"><div class="fill ${aOver?'over':''}" style="width:${pct(c.actualPct)}%"></div></div>${dayLine(c.toActual,'a')}</div>
+   <div class="bar"><div class="bar-top"><span>${t('creditDue',{d:fmtD(c.creditDue,true)})}</span><span class="pct num">${pct(c.creditPct)}%</span></div>
+     <div class="track"><div class="fill ${cOver?'over':''}" style="width:${pct(c.creditPct)}%"></div></div>${dayLine(c.toCredit,'c')}</div>
+   <div class="bar"><div class="bar-top"><span class="num">${t('paidOf',{p:money(c.paid), t:money(r.total)})}</span><span class="pct num">${pct(c.moneyPct)}%</span></div>
+     <div class="track"><div class="fill money" style="width:${pct(c.moneyPct)}%"></div></div>
+     <div class="remain num">${t('remain',{a:money(c.balance)})}</div></div>`;
+}
+function lateLine(dueDate, paidDate, kind){
+  const n = diff(dueDate, paidDate), k = t(kind==='a'?'kActual':'kCredit');
+  return n > 0 ? `<span class="late">${t('late',{n,k})}</span>` : `<span class="ok">${t('onTime',{k})}</span>`;
+}
+function cardView(r, c){
+  const co = company(r.companyId);
+  const s = c.isPaid ? 's-paid' : (c.toActual < 0 ? 's-over' : 's-open');
+  const head = `<div class="card-head"><h3>${esc(co.name)}</h3><div class="chips"><span class="chip">${t('credit',{n:r.creditDays})}</span><span class="chip">${t('acct',{m:fmtM(r.acct)})}</span></div></div>`;
+  if(c.isPaid){
+    return `<article class="card ${s}" data-act="open" data-id="${r.id}" tabindex="0">${head}
+      <div class="card-body"><div class="amount-col"><div class="paid-big">${t('paid')}</div>
+        <button class="btn" data-act="summary" data-id="${r.id}">${t('summary')}</button></div>
+        <div class="paid-info"><span class="status-tag">${t('status')}</span>
+          <span>${t('paidOn',{d:fmtD(c.paidDate,true)})}</span>
+          ${lateLine(r.actualDue,c.paidDate,'a')}${lateLine(c.creditDue,c.paidDate,'c')}
+          <span class="num" style="color:var(--muted)">${t('totalAmt',{a:money(r.total)})}</span></div></div></article>`;
+  }
+  return `<article class="card ${s}" data-act="open" data-id="${r.id}" tabindex="0">${head}
+    <div class="card-body">
+      <div class="amount-col"><div><div class="lbl">${t('outstanding')}</div><div class="amount num">${money(c.balance)}</div><div class="unit">${t('baht')}</div></div>
+        <span class="link">${t('viewDetail')}</span></div>
+      <div><span class="status-tag">${t('status')}</span>${barsView(r,c)}</div>
+    </div></article>`;
+}
+
+function detailView(){
+  const r = DB.receivables.find(x => x.id === S.recId);
+  if(!r || r.cancelled){ S.view='list'; return listView(); }
+  const c = calc(r), co = company(r.companyId), isSales = S.role === 'sales';
+  const months = [...new Set(c.pays.map(p => mk(p.date)))].sort().reverse();
+  const shown = c.pays.filter(p => S.payMonth === 'all' || mk(p.date) === S.payMonth).slice().reverse();
+  const txns = shown.map(p => `<li class="txn ${isSales?'editable':''}" ${isSales?`data-act="editPay" data-id="${p.id}" tabindex="0"`:''}>
+      <span class="dot"></span><div class="what"><b>${p.method==='transfer'?t('transfer'):t('cheque')}</b><span class="num">${fmtD(p.date,true)} ${p.time}${S.lang==='th'?' น.':''}</span></div>
+      <div class="amt num">+${money(p.amount)}</div></li>`).join('');
+  return `<button class="btn ghost back" data-act="back">← ${t('back')}</button>
+  <section class="acct">
+    <div class="name">${esc(co.name)}</div>
+    <div class="meta">${t('credit',{n:r.creditDays})}, ${t('acct',{m:fmtM(r.acct,true)})}</div>
+    ${c.isPaid ? `<div class="bal">${t('paid')}</div>` : `<div class="bal num">${money(c.balance)}<small>${t('baht')}</small></div>`}
+    <div class="of num">${t('totalAmt',{a:money(r.total)})}</div>
+  </section>
+  <div class="detail-grid">
+    <section class="panel-box">
+      <h2>${t('status')}</h2>
+      ${c.isPaid ? `<div class="paid-info"><span>${t('paidOn',{d:fmtD(c.paidDate,true)})}</span>${lateLine(r.actualDue,c.paidDate,'a')}${lateLine(c.creditDue,c.paidDate,'c')}</div>
+        <p><button class="btn" data-act="summary" data-id="${r.id}">${t('summary')}</button></p>` : barsView(r,c)}
+      <h2 style="margin-top:18px">${t('info')}</h2>
+      <dl class="kv num">
+        <dt>${t('fCstart')}</dt><dd>${fmtD(r.creditStart,true)}</dd>
+        <dt>${t('fCdays')}</dt><dd>${r.creditDays}</dd>
+        <dt>${t('creditDue',{d:''})}</dt><dd>${fmtD(c.creditDue,true)}</dd>
+        <dt>${t('fAstart')}</dt><dd>${fmtD(r.actualStart,true)}</dd>
+        <dt>${t('fAdue')}</dt><dd>${fmtD(r.actualDue,true)}</dd>
+      </dl>
+      ${isSales ? `<p style="display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 0">
+        ${c.isPaid?'':`<button class="btn primary" data-act="addPay" data-id="${r.id}">+ ${t('addPay')}</button>`}
+        <button class="btn" data-act="editRec" data-id="${r.id}">${t('editRec')}</button></p>` : ''}
+    </section>
+    <section class="panel-box">
+      <div class="txn-head"><h2>${t('incoming')}</h2>
+        <select data-paymonth aria-label="month"><option value="all">${t('all')}</option>${months.map(m=>`<option value="${m}" ${S.payMonth===m?'selected':''}>${fmtM(m,true)}</option>`).join('')}</select></div>
+      ${c.pays.length===0 ? `<div class="empty">${t('noPay')}</div>` : (shown.length ? `<ul class="txns">${txns}</ul>` : `<div class="empty">${t('noPayMonth')}</div>`)}
+    </section>
+  </div>`;
+}
+
+/* ---------- dialogs ---------- */
+const dlg = document.getElementById('dlg');
+function openDlg(title, body, foot){
+  dlg.innerHTML = `<div class="dlg-h"><h2 id="dlg-title">${title}</h2><button class="close-x" data-act="close" aria-label="${t('cancel')}">×</button></div>
+    <div class="dlg-b">${body}</div><div class="dlg-f">${foot}</div>`;
+  dlg.showModal();
+}
+function recForm(id){
+  const r = id ? DB.receivables.find(x => x.id === id) : null;
+  const v = r ? {...r, company:company(r.companyId).name} : {company:'', acct:'2026-09', total:'', creditDays:60, creditStart:'', actualStart:'', actualDue:''};
+  openDlg(r ? t('editRec') : t('addRec'), `
+    <div class="field"><label for="f-company">${t('fCompany')}</label>
+      <input id="f-company" list="co-dl" value="${esc(v.company)}" autocomplete="off"><span class="hint">${t('fCompanyHint')}</span>
+      <datalist id="co-dl">${DB.companies.map(c=>`<option value="${esc(c.name)}">`).join('')}</datalist></div>
+    <div class="row2">
+      <div class="field"><label for="f-acct">${t('fAcct')}</label><input id="f-acct" type="month" value="${v.acct}"></div>
+      <div class="field"><label for="f-total">${t('fTotal')}</label><input id="f-total" type="number" inputmode="decimal" step="0.01" min="0" value="${v.total}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="f-cdays">${t('fCdays')}</label><input id="f-cdays" type="number" min="1" value="${v.creditDays}"></div>
+      <div class="field"><label for="f-cstart">${t('fCstart')}</label><input id="f-cstart" type="date" value="${v.creditStart}"></div>
+    </div>
+    <div class="preview num" id="f-preview"></div>
+    <div class="row2">
+      <div class="field"><label for="f-astart">${t('fAstart')}</label><input id="f-astart" type="date" value="${v.actualStart}"></div>
+      <div class="field"><label for="f-adue">${t('fAdue')}</label><input id="f-adue" type="date" value="${v.actualDue}"></div>
+    </div>
+    <span class="hint" style="font-size:12.5px;color:var(--muted)">${t('fAdueHint')}</span>
+    <div class="err" id="f-err"></div>`,
+    `${r ? `<button class="btn danger left" data-act="cancelRec" data-id="${r.id}">${t('cancelRec')}</button>` : ''}
+     <button class="btn" data-act="close">${t('cancel')}</button><button class="btn primary" data-act="saveRec" data-id="${r?r.id:''}">${t('save')}</button>`);
+  const upd = () => {
+    const s = document.getElementById('f-cstart').value, n = +document.getElementById('f-cdays').value;
+    document.getElementById('f-preview').textContent = (s && n>0) ? t('previewCredit',{d:fmtD(addDays(s,n),true)}) : t('previewCredit',{d:'–'});
+  };
+  ['f-cstart','f-cdays'].forEach(i => document.getElementById(i).addEventListener('input', upd)); upd();
+}
+function saveRec(id){
+  const g = i => document.getElementById(i).value.trim();
+  const name = g('f-company'), acct = g('f-acct'), total = parseFloat(g('f-total')), cd = parseInt(g('f-cdays')),
+        cs = g('f-cstart'), as = g('f-astart'), ad = g('f-adue'), err = document.getElementById('f-err');
+  if(!name || !acct || !cs || !as || !ad || isNaN(total) || isNaN(cd)) return err.textContent = t('eRequired');
+  if(total <= 0) return err.textContent = t('eTotal');
+  if(cd <= 0) return err.textContent = t('eDays');
+  if(ad < as) return err.textContent = t('eDue');
+  let co = DB.companies.find(c => c.name === name);
+  if(!co){ co = {id:nid('c'), name}; DB.companies.push(co); audit('company.create', null, co); }
+  const data = {companyId:co.id, acct, total:r2(total), creditDays:cd, creditStart:cs, actualStart:as, actualDue:ad};
+  if(id){ const r = DB.receivables.find(x => x.id === id); const old = {...r}; Object.assign(r, data); audit('receivable.update', old, r); }
+  else { const r = {id:nid('r'), ...data}; DB.receivables.push(r); audit('receivable.create', null, r); }
+  dlg.close(); toast(t('savedRec')); render();
+}
+function payForm(recId, payId){
+  const p = payId ? DB.payments.find(x => x.id === payId) : null;
+  const r = DB.receivables.find(x => x.id === (p ? p.recId : recId));
+  const c = calc(r);
+  const v = p || {amount:'', method:'transfer', date:TODAY, time:'10:00'};
+  openDlg(p ? t('editPay') : t('addPay'), `
+    <div class="preview">${esc(company(r.companyId).name)}<br><span class="num">${t('balanceNow',{a:money(c.balance)})}</span></div>
+    <div class="field"><label for="f-amt">${t('fAmt')}</label><input id="f-amt" type="number" inputmode="decimal" step="0.01" min="0" value="${v.amount}"></div>
+    <div class="field"><span class="lab">${t('fMethod')}</span><div class="seg">
+      <label><input type="radio" name="f-method" value="transfer" ${v.method==='transfer'?'checked':''}>${t('transfer')}</label>
+      <label><input type="radio" name="f-method" value="cheque" ${v.method==='cheque'?'checked':''}>${t('cheque')}</label></div></div>
+    <div class="row2">
+      <div class="field"><label for="f-date" id="f-date-l">${v.method==='cheque'?t('fDateC'):t('fDateT')}</label><input id="f-date" type="date" value="${v.date}"></div>
+      <div class="field"><label for="f-time">${t('fTime')}</label><input id="f-time" type="time" value="${v.time}"></div>
+    </div>
+    <div class="err" id="f-err"></div>`,
+    `${p ? `<button class="btn danger left" data-act="cancelPay" data-id="${p.id}">${t('cancelPay')}</button>` : ''}
+     <button class="btn" data-act="close">${t('cancel')}</button><button class="btn primary" data-act="savePay" data-rec="${r.id}" data-id="${p?p.id:''}">${t('save')}</button>`);
+  dlg.querySelectorAll('input[name="f-method"]').forEach(x => x.addEventListener('change', () => {
+    document.getElementById('f-date-l').textContent = x.value === 'cheque' ? t('fDateC') : t('fDateT');
+  }));
+}
+function savePay(recId, payId){
+  const amt = parseFloat(document.getElementById('f-amt').value), date = document.getElementById('f-date').value,
+        time = document.getElementById('f-time').value, method = dlg.querySelector('input[name="f-method"]:checked').value,
+        err = document.getElementById('f-err');
+  if(isNaN(amt) || !date || !time) return err.textContent = t('eRequired');
+  if(amt <= 0) return err.textContent = t('eAmt');
+  const r = DB.receivables.find(x => x.id === recId), c = calc(r);
+  const p = payId ? DB.payments.find(x => x.id === payId) : null;
+  const room = r2(c.balance + (p ? p.amount : 0));
+  if(amt > room + 0.004) return err.textContent = t('eOver',{a:money(room)});
+  if(p){ const old = {...p}; Object.assign(p, {amount:r2(amt), date, time, method}); audit('payment.update', old, p); }
+  else { const np = {id:nid('p'), recId, amount:r2(amt), date, time, method}; DB.payments.push(np); audit('payment.create', null, np); }
+  dlg.close(); toast(t('savedPay')); render();
+}
+function summaryDlg(id){
+  const r = DB.receivables.find(x => x.id === id), c = calc(r);
+  openDlg(`${t('sumH')}: ${esc(company(r.companyId).name)}`, `
+    <dl class="kv num">
+      <dt>${t('sumPaidOn')}</dt><dd>${fmtD(c.paidDate,true)}</dd>
+      <dt>${t('sumCount')}</dt><dd>${t('times',{n:c.pays.length})}</dd>
+      <dt>${t('sumVsActual')}</dt><dd>${lateLine(r.actualDue,c.paidDate,'a')}</dd>
+      <dt>${t('sumVsCredit')}</dt><dd>${lateLine(c.creditDue,c.paidDate,'c')}</dd>
+    </dl>
+    <ul class="txns">${c.pays.map(p => `<li class="txn"><span class="dot"></span><div class="what"><b>${p.method==='transfer'?t('transfer'):t('cheque')}</b>
+      <span class="num">${fmtD(p.date,true)} ${p.time}</span></div><div class="amt num">+${money(p.amount)}</div></li>`).join('')}</ul>`,
+    `<button class="btn primary" data-act="close">${t('cancel')}</button>`);
+}
+function companiesDlg(){
+  const open = id => liveRecs().filter(r => r.companyId === id && !calc(r).isPaid).length;
+  openDlg(t('coH'), `
+    <ul class="co-list">${DB.companies.slice().sort((a,b)=>a.name.localeCompare(b.name,'th')).map(c => `<li>${esc(c.name)}<span>${t('coOpen',{n:open(c.id)})}</span></li>`).join('')}</ul>
+    <div class="field"><label for="f-co">${t('coName')}</label><input id="f-co" autocomplete="off"></div>
+    <div class="err" id="f-err"></div>`,
+    `<button class="btn" data-act="close">${t('cancel')}</button><button class="btn primary" data-act="addCo">${t('coAdd')}</button>`);
+}
+
+/* ---------- events ---------- */
+function arm(b){ b.dataset.armed = '1'; b.textContent = t('confirmAgain'); b.classList.add('armed'); const e = document.getElementById('f-err'); if(e) e.textContent = t('confirmCancel'); }
+let toastTimer;
+function toast(msg){ const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2400); }
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if(S.userMenu && !e.target.closest('.user-menu')){ S.userMenu = false; if(!b) return render(); }
+  if(!b) return;
+  const a = b.dataset.act, id = b.dataset.id;
+  switch(a){
+    case 'login': S.role = b.dataset.role; S.view = 'list'; render(); break;
+    case 'logout': S.role = null; S.userMenu = false; render(); break;
+    case 'usermenu': S.userMenu = !S.userMenu; render(); break;
+    case 'lang': S.lang = b.dataset.lang; render(); break;
+    case 'open': S.view = 'detail'; S.recId = id; S.payMonth = 'all'; render(); window.scrollTo(0,0); break;
+    case 'back': S.view = 'list'; render(); break;
+    case 'summary': e.stopPropagation(); summaryDlg(id); break;
+    case 'export': toast(t('exportDemo',{f:b.dataset.f})); break;
+    case 'addRec': recForm(null); break;
+    case 'editRec': recForm(id); break;
+    case 'saveRec': saveRec(id); break;
+    case 'cancelRec': if(!b.dataset.armed){ arm(b); break; } { const r = DB.receivables.find(x=>x.id===id); const old={...r}; r.cancelled = true; audit('receivable.cancel', old, r); dlg.close(); S.view='list'; toast(t('cancelled')); render(); } break;
+    case 'addPay': payForm(id, null); break;
+    case 'editPay': payForm(null, id); break;
+    case 'savePay': savePay(b.dataset.rec, id); break;
+    case 'cancelPay': if(!b.dataset.armed){ arm(b); break; } { const p = DB.payments.find(x=>x.id===id); const old={...p}; p.cancelled = true; audit('payment.cancel', old, p); dlg.close(); toast(t('cancelled')); render(); } break;
+    case 'companies': companiesDlg(); break;
+    case 'addCo': {
+      const name = document.getElementById('f-co').value.trim(), err = document.getElementById('f-err');
+      if(!name) { err.textContent = t('eRequired'); break; }
+      if(DB.companies.some(c => c.name === name)) { err.textContent = t('coExists'); break; }
+      const co = {id:nid('c'), name}; DB.companies.push(co); audit('company.create', null, co); toast(t('coAdded')); companiesDlg(); break;
+    }
+    case 'close': dlg.close(); break;
+  }
+});
+document.addEventListener('keydown', e => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-act="open"],[data-act="editPay"]')){ e.preventDefault(); e.target.click(); }
+});
+document.addEventListener('change', e => {
+  const m = e.target.dataset.month;
+  if(m !== undefined){
+    if(m === '__all') S.months.clear();
+    else e.target.checked ? S.months.add(m) : S.months.delete(m);
+    render(); document.querySelector('.mfilter')?.setAttribute('open','');
+  } else if(e.target.hasAttribute('data-unpaid')){
+    S.unpaidOnly = e.target.checked; render(); document.querySelector('.mfilter')?.setAttribute('open','');
+  } else if(e.target.hasAttribute('data-paymonth')){
+    S.payMonth = e.target.value; render();
+  }
+});
+render();
+</script>
+</body>
+</html>
