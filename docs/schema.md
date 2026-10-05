@@ -13,7 +13,13 @@
   (ถ้าใช้ `current_date` เฉย ๆ จะเป็นเวลา UTC ช่วง 00:00–07:00 น. วันจะเพี้ยนไป 1 วัน)
 - **ห้าม DELETE** ตารางหลัก ใช้ `is_cancelled` หรือ `is_active` แทน
 - **เปิด RLS ทุกตาราง** (เปิด automatic RLS ไว้ในโปรเจกต์แล้ว) และเขียน policy พร้อมตาราง
-- ตารางหลักมี `created_at`, `created_by`, `updated_at`, `updated_by`
+- ตารางหลักมี `created_at`, `created_by`, `updated_at`, `updated_by` — ทั้ง 4 ช่อง **not null**
+  - `created_at` / `updated_at`: `timestamptz` default `now()`
+  - `created_by` / `updated_by`: `uuid` FK → `profiles(id)`
+  - trigger ใส่ให้อัตโนมัติจาก `auth.uid()` ทุก insert/update (ตอนสร้าง `updated_*` = `created_*`)
+    ค่าที่ส่งมาจากแอปถูกเขียนทับ และตอนแก้ไข `id`, `created_at`, `created_by` คงค่าเดิมเสมอ
+  - **ไม่มีผู้ใช้ล็อกอิน (`auth.uid()` ว่าง) → เขียนไม่ได้** รวมถึงรันใน SQL Editor
+    ต้องตั้ง `request.jwt.claims` เป็นผู้ใช้จริงก่อน (เพราะ `audit_logs.user_id` ห้ามว่าง)
 
 ## 2. Enums
 
@@ -43,10 +49,12 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 | ช่อง | ชนิด | กฎ | ความหมาย |
 |---|---|---|---|
 | id | uuid | PK | |
-| name | text | not null, **unique** | ชื่อบริษัท |
+| name | text | not null, **unique**, ห้ามว่าง/มีแต่ช่องว่าง/มีช่องว่างหน้าหรือหลัง | ชื่อบริษัท |
 | is_active | boolean | not null, default true | ซ่อนจากรายการเลือก |
 | created_at / created_by / updated_at / updated_by | | | |
 
+- กฎชื่อ: `constraint companies_name_trimmed check (name = btrim(name) and name <> '')`
+  แอปควร trim ก่อนส่ง (ชื่อซ้ำเช็คแบบตรงตัวอักษร)
 - สาขา หรือบริษัทที่มีหลายใบวางบิลในบัญชีเดือนเดียวกัน → ใช้ชื่อแยกกัน เช่น `บ.X 1`, `บ.X 2`
 - ชื่อที่พิมพ์ใหม่ในฟอร์มเพิ่ม/แก้ไขยอดค้าง จะถูกสร้างเป็นบริษัทใหม่อัตโนมัติ
 
@@ -77,7 +85,7 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 | ช่อง | ชนิด | กฎ | ความหมาย |
 |---|---|---|---|
 | id | uuid | PK | |
-| receivable_id | uuid | not null, FK → `receivables(id)` | เป็นของการ์ดไหน |
+| receivable_id | uuid | not null, FK → `receivables(id)`, **เปลี่ยนไม่ได้หลังสร้าง** | เป็นของการ์ดไหน |
 | amount | numeric(14,2) | not null, > 0 | ยอดเงิน |
 | method | payment_method | not null | โอน / เช็ค |
 | paid_date | date | not null | โอน = วันที่เงินเข้า, เช็ค = วันที่เช็คขึ้นเงิน |
@@ -86,7 +94,11 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 | created_at / created_by / updated_at / updated_by | | | |
 
 - **ผลรวมการจ่ายที่ไม่ถูกยกเลิก ต้องไม่เกิน `total_amount`** ของการ์ด ตรวจทั้งในแอปและใน database (trigger) เพราะคนอาจเรียก API ตรงโดยไม่ผ่านแอป
-- เพิ่มการจ่ายในการ์ดที่ถูกยกเลิกไม่ได้
+  ตอนแก้ไขการจ่าย ไม่นับยอดเดิมของการจ่ายนั้นเอง และแก้ `total_amount` ให้ต่ำกว่ายอดที่จ่ายแล้วไม่ได้
+- เพิ่มการจ่ายในการ์ดที่ถูกยกเลิกไม่ได้ (insert หรือเลิกยกเลิกการจ่ายในการ์ดนั้น)
+  การจ่ายเดิมในการ์ดนั้นยังแก้ / ยกเลิกได้ และยกเลิกการ์ดไม่ได้ยกเลิกการจ่ายตาม
+- **ย้ายการจ่ายไปการ์ดอื่นไม่ได้** ใส่ผิดการ์ด → ยกเลิกการจ่ายนั้นแล้วสร้างใหม่ในการ์ดที่ถูกต้อง
+  (ประวัติของทั้ง 2 การ์ดจึงครบ)
 
 ### 3.5 `audit_logs` — ประวัติการแก้ไข
 
@@ -122,8 +134,16 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 
 คำนวณใหม่ทุกครั้งที่อ่าน ผ่าน view `receivable_summary` (เฉพาะการ์ดที่ไม่ถูกยกเลิก) เพื่อให้แก้ข้อมูลแล้วทุกอย่างอัปเดตตามเสมอ
 
+- view ตั้ง `security_invoker = true` (ใช้ RLS ของคนที่อ่าน)
+- คอลัมน์: ทุกช่องของ `receivables` ยกเว้น `is_cancelled` + `company_name` (= `companies.name`) + ค่าในตารางด้านล่าง
+- **% ทั้งหมด** (`actual_pct`, `credit_pct`, `money_pct`) เป็นเลข 0–100 ชนิด `numeric(5,2)`
+  **ตัดทศนิยมทิ้ง** เหลือ 2 ตำแหน่ง (`trunc` ไม่ปัด) เพื่อไม่ให้จ่าย 9,999.99 จาก 10,000 แสดงเป็น 100%
+- `actual_pct` เมื่อ `actual_due_date = actual_start_date`: ถึงวันนั้นแล้ว = 100 ยังไม่ถึง = 0
+- `due_month` = วันที่ 1 ของเดือน (`date`), `paid_in_full_date` ว่างถ้ายังจ่ายไม่ครบ
+
 | ค่า | สูตร |
 |---|---|
+| company_name | `companies.name` ของการ์ด |
 | credit_due_date | `credit_start_date + credit_days` |
 | paid_amount | ผลรวม `payments.amount` ที่ไม่ถูกยกเลิก (ไม่มี = 0) |
 | balance | `total_amount − paid_amount` |
@@ -151,6 +171,23 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 - ผู้ใช้ที่ `is_active = false` ทำอะไรไม่ได้เลย
 - รายละเอียด policy อยู่ใน AGENTS.md / migration
 
-## 6. ยังไม่ได้ออกแบบ
+## 6. Error ที่แอปต้องแปลเป็นภาษาคน
+
+ข้อความ (`message`) หรือชื่อ constraint คงที่ ใช้จับใน M4 ได้ (`details` เป็นภาษาไทยสำหรับดีบัก)
+
+| code | message / constraint | เกิดเมื่อ |
+|---|---|---|
+| 42501 | `not_authenticated` | เขียนข้อมูลโดยไม่มีผู้ใช้ล็อกอิน |
+| 42501 | (RLS) `new row violates row-level security policy` / `permission denied` | role ไม่มีสิทธิ์ (เช่น owner เขียน, ใครก็ตาม DELETE) |
+| 23514 | `payments_exceed_total` | ยอดจ่ายรวม (ไม่นับที่ยกเลิก) เกิน `total_amount` |
+| 23514 | `total_below_paid` | แก้ `total_amount` ให้ต่ำกว่ายอดที่จ่ายแล้ว |
+| 23514 | `receivable_cancelled` | เพิ่มการจ่ายในการ์ดที่ถูกยกเลิก |
+| 23514 | `payment_receivable_immutable` | เปลี่ยน `receivable_id` ของการจ่าย |
+| 23514 | constraint `companies_name_trimmed` | ชื่อบริษัทว่าง / มีแต่ช่องว่าง / มีช่องว่างหน้าหรือหลัง |
+| 23514 | constraint `receivables_*` (`account_month_first_day`, `total_amount_positive`, `credit_days_positive`, `due_after_start`), `payments_amount_positive` | ค่าผิดกฎในตาราง |
+| 23505 | constraint `companies_name_key` | ชื่อบริษัทซ้ำ |
+| 23505 | constraint `receivables_one_per_company_month` | การ์ดของบริษัทนี้ในเดือนนี้มีอยู่แล้ว |
+
+## 7. ยังไม่ได้ออกแบบ
 
 - **ตาราง feedback** — รอกำหนดระบบเก็บ feedback (prd ข้อ 11)

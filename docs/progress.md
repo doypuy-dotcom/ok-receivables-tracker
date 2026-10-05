@@ -144,3 +144,54 @@ npm run dev
 - [x] `m1_checks.sql` บน Supabase จริง 13/13 PASS
 - [x] มือถือ (Vercel): ล็อกอินได้, รีเฟรชไม่ขึ้น 404, ไม่มี error ใน console
 - [x] commit
+
+## M2 — ตาราง + RLS + trigger ✅ (2026-10-06)
+
+### ทำอะไรไปแล้ว
+
+**Database — `supabase/migrations/002_core_tables.sql`**
+- enums `payment_method`, `audit_action`
+- ตาราง `companies`, `receivables`, `payments`, `audit_logs` ตาม schema.md 3.2–3.5
+  - `created_at/created_by/updated_at/updated_by` not null, `*_by` FK → `profiles`
+  - ตั้งชื่อ constraint ทุกตัว (ให้ M4 แปล error ได้), unique index `receivables_one_per_company_month`
+  - `companies_name_trimmed`: ชื่อบริษัทห้ามว่าง / มีแต่ช่องว่าง / มีช่องว่างหน้าหรือหลัง
+  - index `payments(receivable_id)`, `audit_logs(receivable_id, created_at)`
+- Trigger (เรียงตามชื่อ `trg_10_*` → `trg_20_*` → `trg_90_*`)
+  - `set_row_meta`: ใส่ `created_*/updated_*` จาก `auth.uid()`, ล็อก `id/created_*` ตอนแก้ไข, ไม่มีผู้ใช้ → `not_authenticated`
+  - `check_payment_rules`: ห้ามเปลี่ยน `receivable_id`, ห้ามเพิ่มการจ่ายในการ์ดที่ยกเลิก,
+    ยอดรวมห้ามเกิน `total_amount` (ไม่นับยอดเดิมของตัวเอง, `for update` ล็อกการ์ดกันบันทึกพร้อมกัน)
+  - `check_receivable_total`: ห้ามลด `total_amount` ต่ำกว่ายอดที่จ่ายแล้ว
+  - `write_audit_log`: ทุก insert/update บน 3 ตาราง พร้อม `receivable_id`, action create/update/cancel
+  - trigger ที่รวมยอด / เขียน audit เป็น `security definer`, revoke execute ของ trigger functions จากทุก role
+- RLS: อ่าน = ผู้ใช้ active ทุกคน, เพิ่ม/แก้ = sales เท่านั้น, `audit_logs` อ่านอย่างเดียว, ไม่มี DELETE ให้ใคร
+  + revoke สิทธิ์ตารางจาก anon, authenticated ได้แค่ select/insert/update (audit_logs: select)
+- View `receivable_summary` (`security_invoker = true`, วันนี้ = เวลาไทย): ค่าคำนวณทั้งหมดตาม schema.md 4 + `company_name`
+  % เป็น 0–100 ตัดทศนิยมทิ้ง 2 ตำแหน่ง
+- รายการ error code / message สำหรับ M4 อยู่ใน schema.md ข้อ 6
+
+**Tests — `supabase/tests/m2_checks.sql`**: ตรวจ PASS/FAIL 39 ข้อ (ข้อทดสอบ 1–8 ของแผน + owner อ่านได้แต่เขียนไม่ได้
++ กฎยอดเงิน, การ์ดที่ยกเลิก, ชื่อบริษัท, ย้ายการจ่าย, ไม่มีผู้ใช้ล็อกอิน, anon, is_active = false) ทุกการเขียนถูก rollback
+- ตรวจกับ PGlite ในเครื่องด้วย: จงใจทำ migration ผิด (ลบ security_invoker, นับยอดเดิมซ้ำ, เปิด DELETE, ลบกฎชื่อ / receivable_id) → ข้อที่เกี่ยวข้องขึ้น FAIL ถูกต้อง
+
+**Docs**: schema.md อัปเดตให้ตรงกับ migration (not null ของ `*_by`, กฎชื่อบริษัท, `receivable_id` เปลี่ยนไม่ได้,
+คอลัมน์ view + กฎ %, ตาราง error)
+
+### สิ่งที่ต้องรู้สำหรับ milestone ถัดไป
+- **เขียนข้อมูลจาก SQL Editor ต้องตั้งผู้ใช้ก่อน** (ไม่งั้น `not_authenticated`) เช่นตอนใส่ข้อมูล `[TEST]` ใน M3:
+  ```sql
+  select set_config('request.jwt.claims', json_build_object('sub', (select id from auth.users where email = 'อีเมล sales'))::text, true);
+  insert into public.companies (name) values ('[TEST] ...');
+  ```
+  (รันในคำสั่งชุดเดียวกัน เพราะ `true` = มีผลแค่ใน transaction นั้น)
+- ทุก update เขียน audit แม้ค่าไม่เปลี่ยน → หน้าประวัติใน M3 ต้องกรองรายการที่ไม่มีช่องไหนเปลี่ยนออก
+- ยังไม่ได้เปิด Realtime ให้ `receivables` / `payments` (M5)
+
+### Migrations ที่รันแล้ว
+- [x] `002_core_tables.sql` — รันบน Supabase แล้ว (2026-10-06)
+
+### ผลทดสอบ (Definition of done)
+- [x] `m2_checks.sql` บน Supabase จริง 39/39 PASS (owner + sales)
+- [x] ทุกช่องในตารางสิทธิ์ (prd.md ข้อ 9) ที่ M2 แตะ ทดสอบด้วย role ผิดแล้วถูกปฏิเสธ (ข้อ 9–13, 21–28)
+- [x] ไม่มี secret ใน repo, อีเมลใน test เป็น placeholder
+- [ ] ทดสอบในเบราว์เซอร์ / มือถือ — M2 ยังไม่มีหน้าจอ เริ่มใน M3
+- [x] commit
