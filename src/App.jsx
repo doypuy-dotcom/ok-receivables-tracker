@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Header from './components/Header.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import ReceivableDetailPage from './pages/ReceivableDetailPage.jsx'
 import ReceivablesPage from './pages/ReceivablesPage.jsx'
 
 function AppShell({ children }) {
@@ -22,6 +23,14 @@ export default function App() {
         element={
           <AppShell>
             <ReceivablesPage />
+          </AppShell>
+        }
+      />
+      <Route
+        path="/r/:id"
+        element={
+          <AppShell>
+            <ReceivableDetailPage />
           </AppShell>
         }
       />

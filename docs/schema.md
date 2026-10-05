@@ -156,6 +156,10 @@ create type audit_action   as enum ('create', 'update', 'cancel');
 | actual_pct | `(วันนี้ − actual_start_date) ÷ (actual_due_date − actual_start_date)` จำกัด 0–100% |
 | credit_pct | `(วันนี้ − credit_start_date) ÷ credit_days` จำกัด 0–100% |
 | money_pct | `paid_amount ÷ total_amount` |
+| paid_late_actual_days | `paid_in_full_date − actual_due_date` (ว่างถ้ายังจ่ายไม่ครบ, > 0 = จ่ายช้ากี่วัน, ≤ 0 = ตรงเวลา) — เพิ่มใน 003 |
+| paid_late_credit_days | `paid_in_full_date − credit_due_date` (กฎเดียวกัน) — เพิ่มใน 003 |
+
+- กล่องยอดรวมในหน้าตาราง = ผลรวม `balance` ของการ์ดที่แสดง แอปบวกจาก `balance::text` ด้วยจำนวนเต็มหน่วยสตางค์ (BigInt) ไม่ใช้ float
 
 ## 5. สิทธิ์ (RLS) โดยสรุป
 

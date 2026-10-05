@@ -121,7 +121,8 @@ ok-receivables/
 ├── docs/                     prd, schema, architecture, implementation-plan, progress, ui-reference
 ├── supabase/
 │   ├── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
-│   └── tests/                m1_checks.sql, m2_checks.sql … (ตรวจ RLS แบบ PASS/FAIL)
+│   ├── tests/                m1_checks.sql, m2_checks.sql … (ตรวจ RLS แบบ PASS/FAIL)
+│   └── seed/                 test_data.sql (ข้อมูล [TEST]), cleanup_test_data.sql (ยกเลิก/ปิด [TEST])
 ├── vercel.json               rewrite ทุก path → index.html (react-router)
 ├── public/                   ไอคอน PWA, favicon
 └── src/
@@ -151,7 +152,8 @@ ok-receivables/
 | Production | ok-receivables.vercel.app | Vercel Environment Variables |
 
 - มี Supabase โปรเจกต์เดียว เครื่องนักพัฒนาและ production ใช้ database เดียวกัน
-- **ก่อนส่งมอบให้ลูกค้า:** ลบข้อมูลทดสอบทั้งหมด (ทำผ่าน SQL ครั้งเดียว บันทึกใน progress.md)
+- **ก่อนส่งมอบให้ลูกค้า:** เอาข้อมูลทดสอบออกจากหน้าจอทั้งหมดด้วย `supabase/seed/cleanup_test_data.sql`
+  (ยกเลิกการจ่าย / การ์ด และปิดบริษัท `[TEST]` — ไม่ใช้ DELETE ตาม AGENTS.md) แล้วบันทึกใน progress.md
 - ระหว่างทดสอบกับลูกค้า: ห้ามทดลองบันทึกข้อมูลมั่ว ๆ ใน production ใช้บริษัทชื่อ `[TEST] …` แล้วยกเลิกทิ้ง
 
 ## 12. ยังไม่ได้ออกแบบ
