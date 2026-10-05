@@ -120,7 +120,9 @@ ok-receivables/
 ├── CLAUDE.md                 ชี้ไปที่ AGENTS.md
 ├── docs/                     prd, schema, architecture, implementation-plan, progress, ui-reference
 ├── supabase/
-│   └── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
+│   ├── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
+│   └── tests/                m1_checks.sql, m2_checks.sql … (ตรวจ RLS แบบ PASS/FAIL)
+├── vercel.json               rewrite ทุก path → index.html (react-router)
 ├── public/                   ไอคอน PWA, favicon
 └── src/
     ├── main.jsx, App.jsx     จุดเริ่มต้น + routes

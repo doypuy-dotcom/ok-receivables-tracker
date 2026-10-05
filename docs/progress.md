@@ -81,3 +81,66 @@ npm run dev
 ## หมายเหตุจากอาจารย์ (6 ต.ค.)
 - อนุญาตให้ใช้คลิปเสียงแทนวิดีโอสำหรับการสัมภาษณ์
 - ยอดชำระขั้นต่ำ ฿500 ผ่านเกณฑ์
+
+## M1 — Login + role 🟡 โค้ดเสร็จ รอรัน migration + ทดสอบ 2 บัญชี (2026-10-06)
+
+### ทำอะไรไปแล้ว
+
+**Database**
+- `supabase/migrations/001_profiles_and_roles.sql`
+  - enum `user_role` ('owner', 'sales'), ตาราง `profiles` ตาม schema.md 3.1 (FK → `auth.users`, ไม่มี cascade)
+  - `public.my_role()`: `security definer`, `stable`, `set search_path = ''` คืน role ของ `auth.uid()` เฉพาะ `is_active` (ไม่งั้น null)
+    execute ได้เฉพาะ `authenticated` (revoke จาก public, anon)
+  - RLS เปิด, policy เดียว: SELECT สำหรับ `authenticated` เมื่อ `my_role() is not null` (ผู้ใช้ที่ active อ่านได้ทุกแถว)
+  - ไม่มี policy INSERT / UPDATE / DELETE + revoke สิทธิ์ตารางจาก anon/authenticated เหลือแค่ SELECT ของ authenticated
+- `supabase/tests/m1_checks.sql`: ตรวจ PASS/FAIL 13 ข้อ (role, อ่าน, แก้ role ตัวเอง, insert, delete, anon, ไม่มี profile, is_active = false)
+  ทุกการเขียนถูก rollback ไม่เปลี่ยนข้อมูลจริง
+  - ทดสอบในเครื่องด้วย PGlite + stub `auth` schema แล้ว: 13/13 PASS และเมื่อจงใจเปิด policy UPDATE ผิด ๆ ข้อ 4–7 ขึ้น FAIL ถูกต้อง
+  - **ยังไม่ได้รันบน Supabase จริง**
+
+**App**
+- `react-router-dom` 7: `/login`, `/` (ต้องล็อกอิน), path อื่น → `/`
+- `vercel.json`: rewrite ทุก path ไป `index.html` (เปิด/รีเฟรช `/login` ตรง ๆ บน Vercel ได้)
+- `src/auth/AuthProvider.jsx` + `useAuth.js`: ตาม architecture.md ข้อ 4
+  - session จำในเครื่อง (ค่าเริ่มต้นของ supabase-js, localStorage)
+  - มี session → อ่าน `profiles` ของตัวเอง → ไม่พบ / `is_active = false` → ออกจากระบบ + ข้อความในหน้า login
+    (RLS ไม่คืนแถวให้ผู้ใช้ที่ปิดใช้งาน จึงแยก "ไม่มี profile" กับ "ถูกปิด" ไม่ได้ ใช้ข้อความเดียวกัน)
+  - โหลด profile ไม่ได้ (เน็ตหลุด) → หน้าข้อความ + ปุ่ม "ลองอีกครั้ง" / "ออกจากระบบ" (ไม่บังคับออก)
+  - ออกจากระบบใช้ `scope: 'local'` ออกเฉพาะเครื่องนี้ ไม่เตะอีกเครื่องของผู้ใช้คนเดียวกัน
+- `src/auth/RequireAuth.jsx`: ป้องกันหน้าที่ต้องล็อกอิน + สถานะกำลังโหลด
+- `src/pages/LoginPage.jsx`: อีเมล + รหัสผ่าน หน้าตาตาม `.login-box` ของ ui-reference (ไม่มีหน้าสมัคร)
+  ข้อความ error: ไม่กรอก, รหัสผิด, ยังไม่ยืนยันอีเมล, ลองบ่อยเกิน, ไม่มีสัญญาณ
+- `src/components/Header.jsx`: โลโก้ + ชื่อบริษัท | ปุ่มชื่อ + ตำแหน่ง ▾ (เมนู: ชื่อ, ตำแหน่ง, ออกจากระบบ) | ปุ่มภาษา
+- `src/pages/ReceivablesPage.jsx`: placeholder "ตารางยอดค้าง (M3)" + pill ตำแหน่ง
+- `src/lib/i18n.js`: ข้อความไทย/อังกฤษเฉพาะของ M1 + ปุ่ม ENG/ไทย (ui-reference มีปุ่มนี้ใน header และหน้า login)
+  ข้อความของหน้าอื่นเพิ่มใน M3
+- `src/index.css`: นำ style ของ header, user menu, login, field, btn, pill จาก ui-reference มาใช้ ลบ style หน้าเช็คการเชื่อมต่อของ M0
+
+### ตรวจแล้วว่าผ่าน
+- `npm run build` ผ่าน, `npm run lint` ไม่มี warning/error
+- `m1_checks.sql` 13/13 PASS บน PGlite (ไม่ใช่ Supabase จริง)
+
+### ต้องทำใน Supabase dashboard (ขั้นตอนสร้างบัญชี — ใช้ซ้ำตอนสร้างบัญชีจริงก่อน V0.1)
+1. Authentication → Sign In / Providers: ปิด **Allow new users to sign up**, Email provider เปิดอยู่
+2. SQL Editor: รัน `001_profiles_and_roles.sql`
+3. Authentication → Users → Add user → Create new user: ใส่อีเมล + รหัสผ่าน, ติ๊ก **Auto Confirm User**
+4. SQL Editor: เพิ่มแถว `profiles` จากอีเมล
+   ```sql
+   insert into public.profiles (id, display_name, role)
+   select id, 'ชื่อที่แสดง', 'sales' from auth.users where email = 'อีเมล';
+   ```
+5. ปิดบัญชี: `update public.profiles set is_active = false where id = (select id from auth.users where email = 'อีเมล');`
+
+### Migrations ที่รันแล้ว
+- [x] `001_profiles_and_roles.sql` — รันบน Supabase แล้ว (2026-10-06)
+- สร้างผู้ใช้ทดสอบ 2 คน (owner, sales) + แถว `profiles` แล้ว
+
+### ผลทดสอบ (Definition of done)
+- [x] ล็อกอิน owner + sales พร้อมกันในคนละเบราว์เซอร์ เห็นชื่อ/ตำแหน่งถูก
+- [x] รหัสผิด → ข้อความชัดเจน
+- [ ] `is_active = false` → เข้าไม่ได้ (ในแอป) — ยังไม่ได้รายงานผล; ระดับ database ผ่านแล้วใน `m1_checks.sql` ข้อ 13
+- [x] ปิดแท็บแล้วเปิดใหม่ → ยังล็อกอินอยู่
+- [x] ออกจากระบบ → กลับหน้า login
+- [x] `m1_checks.sql` บน Supabase จริง 13/13 PASS
+- [ ] มือถือ + ไม่มี error ใน console — ยังไม่ได้รายงานผล
+- [x] commit
