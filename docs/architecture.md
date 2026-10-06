@@ -123,17 +123,38 @@
 
 ## 8. PWA
 
+ทำด้วย `vite-plugin-pwa` (ตั้งค่าใน `vite.config.js` ที่เดียว) — manifest และ service worker ถูกสร้างตอน `npm run build`
+
 | ส่วน | ค่า |
 |---|---|
 | name / short_name | ระบบติดตามยอดค้างชำระ — OK / OK ยอดค้าง |
 | display | standalone (เปิดเต็มจอ ไม่มีแถบเบราว์เซอร์) |
-| icons | 192×192, 512×512 + `apple-touch-icon` 180×180 สำหรับ iPhone |
-| theme_color | สีหลักจาก ui-reference |
+| start_url / scope / id | `/` |
+| lang | th |
+| icons | 192×192, 512×512, maskable 512×512 + `apple-touch-icon` 180×180 สำหรับ iPhone |
+| theme_color / background_color | `#1c5da3` (`--primary`) / `#f2f5f4` (`--bg`) จาก ui-reference |
 | service worker | **cache แค่ไฟล์ของแอป (app shell)** ห้าม cache ข้อมูลจาก Supabase |
 
+**ไอคอน:** ต้นฉบับคือ `public/logo-ok.svg` (โลโก้ "OK" ตัวเดียวกับในแอป ตัวอักษรเป็นเส้น ไม่ใช่ `<text>` จึงไม่ต้องใช้ฟอนต์)
+→ `npm run icons` แปลงเป็น PNG ทุกขนาดลง `public/icons/` ด้วย `scripts/generate-icons.mjs`
+แก้โลโก้ = แก้ SVG ไฟล์เดียวแล้วรันสคริปต์ใหม่ **ห้ามเอารูปไอคอนจากอินเทอร์เน็ตมาใส่**
+
 ทำไมห้าม cache ข้อมูล: ถ้ามือถือแสดงยอดเงินเก่าจาก cache เจ้าของอาจเห็นยอดค้างที่จ่ายไปแล้ว ไม่มีสัญญาณเน็ต → แสดงข้อความ "ออฟไลน์" แทนตัวเลขเก่า
+วิธีบังคับ: ใน `workbox` ไม่มี `runtimeCaching` เลย service worker จึงรับผิดชอบแค่ไฟล์ที่ precache ไว้ (js/css/html/ไอคอน)
+คำขอไป Supabase (ข้อมูล, auth, realtime) และฟอนต์จาก Google เป็นคำขอข้ามโดเมนที่ไม่มี route รองรับ → วิ่งออกเน็ตจริงทุกครั้ง
+
+**อัปเดตเวอร์ชันใหม่:** `registerType: 'prompt'` — deploy ขึ้น Vercel แล้วแอปที่ติดตั้งไว้จะเจอ service worker ตัวใหม่
+(ตอนเปิดแอป, ตอนสลับกลับมาที่แอป, ตอนเน็ตกลับมา และทุก 1 ชั่วโมง) แล้วขึ้นแถบ **"มีแอปเวอร์ชันใหม่ · อัปเดตเดี๋ยวนี้ / ไว้ก่อน"**
+(`src/components/UpdatePrompt.jsx`) กดอัปเดต = โหลดหน้าใหม่ด้วยเวอร์ชันใหม่ทันที
+ถ้าไม่กด ก็ได้เวอร์ชันใหม่เองเมื่อปิดแอปทุกหน้าต่างแล้วเปิดใหม่ — **ไม่ต้องลบแอปออกจากหน้าจอแล้วติดตั้งซ้ำ**
+ไม่รีโหลดเองโดยไม่ถาม เพราะผู้ใช้อาจกำลังกรอกฟอร์มการจ่ายอยู่
+
+**แถบสถานะของ iPhone (safe-area):** `viewport-fit=cover` + `apple-mobile-web-app-status-bar-style: default`
+และแต่ละส่วนเผื่อขอบปลอดภัยเอง — `.topbar` เผื่อ `env(safe-area-inset-top)`, `main` และ `.login` เผื่อซ้าย/ขวา/ล่าง
+(ห้ามใส่ padding ที่ `:root` เพราะ `.topbar` เป็น sticky แล้วจะเว้นซ้ำสองชั้น)
 
 **ติดตั้ง:** iPhone ต้องเปิดผ่าน Safari → แชร์ → Add to Home Screen · Android เปิดผ่าน Chrome → ติดตั้งแอป
+iPhone จะเปิดไอคอนบนหน้าจอหลักเป็นแอปแยกจาก Safari ต้องล็อกอินในแอปนั้นอีกครั้ง (ดูข้อ 4)
 
 ## 9. โครงสร้างโฟลเดอร์
 
@@ -147,7 +168,11 @@ ok-receivables/
 │   ├── tests/                m1_checks.sql, m2_checks.sql … (ตรวจ RLS แบบ PASS/FAIL)
 │   └── seed/                 test_data.sql (ข้อมูล [TEST]), cleanup_test_data.sql (ยกเลิก/ปิด [TEST])
 ├── vercel.json               rewrite ทุก path → index.html (react-router)
-├── public/                   ไอคอน PWA, favicon
+├── scripts/
+│   └── generate-icons.mjs    สร้าง PNG ของ PWA จาก public/logo-ok.svg (npm run icons)
+├── public/
+│   ├── logo-ok.svg           โลโก้ "OK" ต้นฉบับ + favicon (ต้นทางของไอคอนทุกไฟล์)
+│   └── icons/                icon-192, icon-512, icon-512-maskable, apple-touch-icon-180 (.png)
 └── src/
     ├── main.jsx, App.jsx     จุดเริ่มต้น + routes
     ├── lib/
@@ -164,7 +189,8 @@ ok-receivables/
     ├── auth/                 หน้า login, ตัวจัดการ session/role
     ├── pages/                ReceivablesPage, ReceivableDetailPage, LoginPage
     ├── components/           Card, StatusBars, MonthFilter, EditHistory, Dialog,
-    │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton
+    │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton,
+    │                         UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่")
     └── index.css             tokens สีและ CSS จาก ui-reference
 ```
 

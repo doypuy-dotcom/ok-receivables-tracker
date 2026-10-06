@@ -41,10 +41,10 @@
   }
 }
 
+/* safe-area (M6): ไม่ใส่ padding ที่ :root เพราะ .topbar เป็น sticky แล้วจะเว้นซ้ำสองชั้น
+   แต่ละส่วนเผื่อขอบของตัวเองแทน (แถบบน = ด้านบน, เนื้อหา = ซ้าย/ขวา/ล่าง) */
 :root {
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 *,
 *::before,
@@ -83,10 +83,12 @@ button:disabled {
 /* header */
 .topbar {
   position: sticky;
-  top: env(safe-area-inset-top, 0px);
+  top: 0;
   z-index: 20;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
+  /* iPhone ที่ติดตั้งบนหน้าจอหลัก: สีพื้นแถบบนลากขึ้นไปใต้แถบสถานะ เนื้อหาไม่ถูกบัง */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 .topbar-in {
   max-width: 1120px;
@@ -94,7 +96,9 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  /* เผื่อรอยบากตอนตะแคงเครื่อง */
+  padding: 10px calc(16px + env(safe-area-inset-right, 0px)) 10px
+    calc(16px + env(safe-area-inset-left, 0px));
 }
 .brand {
   display: flex;
@@ -226,7 +230,8 @@ button:disabled {
 main {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 20px 16px 48px;
+  padding: 20px calc(16px + env(safe-area-inset-right, 0px))
+    calc(48px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
 }
 .page-title {
   margin: 4px 0 2px;
@@ -324,7 +329,9 @@ main {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 24px 16px;
+  /* หน้าที่ไม่มีแถบบน ต้องเผื่อขอบปลอดภัยเองทั้งสี่ด้าน */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+    calc(24px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
 }
 .login-box {
   width: 100%;
@@ -1111,6 +1118,32 @@ dialog::backdrop {
 .toast.show {
   opacity: 1;
   transform: translateX(-50%);
+}
+
+/* แถบแจ้งว่ามีเวอร์ชันใหม่ (M6) — ขึ้นเหนือ .toast และเหนือขอบล่างของ iPhone */
+.sw-update {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  box-shadow: 0 6px 20px rgba(23, 36, 44, 0.18);
+  font-size: 14px;
+}
+.sw-update b {
+  font-weight: 600;
+}
+.sw-update .btn {
+  flex: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

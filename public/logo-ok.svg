@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  โลโก้ "OK" ต้นฉบับของแอป (ที่เดียวในโปรเจกต์) — ใช้เป็น favicon และเป็นต้นฉบับของไอคอน PWA
+  สี #1c5da3 = --primary จาก docs/ui-reference.html, ตัวอักษรสีขาว = --primary-ink
+  ตัวอักษรเป็นเส้น (path/circle) ไม่ใช่ <text> จึงไม่ต้องพึ่งฟอนต์ตอนแปลงเป็น PNG
+
+  scripts/generate-icons.mjs อ่านไฟล์นี้: ดึงสีจาก rect id="bg" และดึงเนื้อใน <g id="mark"> ไปประกอบใหม่
+  ห้ามใส่ <g> ซ้อนใน id="mark" และห้ามย้าย id ทั้งสอง ไม่งั้นสคริปต์หาไม่เจอ (สคริปต์จะ error บอก)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="OK">
+  <rect id="bg" width="512" height="512" rx="121" fill="#1c5da3"/>
+  <g id="mark" fill="none" stroke="#ffffff" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="166" cy="256" r="69"/>
+    <path d="M307 187V325"/>
+    <path d="M414 187 328 256 414 325"/>
+  </g>
+</svg>

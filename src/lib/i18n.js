@@ -14,6 +14,11 @@ const T = {
     loading: 'กำลังโหลด…',
     retry: 'ลองอีกครั้ง',
 
+    // มีเวอร์ชันใหม่ของแอป (M6)
+    swUpdate: 'มีแอปเวอร์ชันใหม่',
+    swUpdateNow: 'อัปเดตเดี๋ยวนี้',
+    swLater: 'ไว้ก่อน',
+
     loginTitle: 'เข้าสู่ระบบ',
     loginHint: 'ใช้อีเมลและรหัสผ่านที่ได้รับจากผู้ดูแลระบบ',
     email: 'อีเมล',
@@ -193,6 +198,10 @@ const T = {
     changePw: 'Change password',
     loading: 'Loading…',
     retry: 'Try again',
+
+    swUpdate: 'A new version is available',
+    swUpdateNow: 'Update now',
+    swLater: 'Later',
 
     loginTitle: 'Sign in',
     loginHint: 'Use the email and password you were given',

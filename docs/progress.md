@@ -929,3 +929,199 @@ npm run dev
 - ยังไม่ได้เปลี่ยนรหัสจริงด้วยบัญชี owner (ไม่อยากเปลี่ยนรหัสเจ้าของก่อนส่งมอบ) —
   เส้นทางโค้ดเป็นเส้นเดียวกับ sales และ `updateUser` ไม่เกี่ยวกับ role
 - ข้อ 15 (owner ยังไม่มีปุ่มเพิ่ม/แก้ไข และ role ยังเป็น "เจ้าของบริษัท") ยังเป็นจริง ✓
+
+---
+
+## M6 — PWA (ติดตั้งลงหน้าจอ) ⏳ (2026-10-07 — ผ่านบนคอมแล้ว รอทดสอบติดตั้งบนมือถือจริง)
+
+> ทำตาม implementation-plan.md ข้อ M6 และ architecture.md ข้อ 8 เท่านั้น
+> ไม่มี migration ใหม่ ไม่แตะ RLS / ตาราง / trigger และไม่แตะหน้าจอเดิม (นอกจากขอบปลอดภัยของ iPhone)
+
+### ทำอะไรไปแล้ว
+
+**1. vite-plugin-pwa (`vite.config.js`)**
+
+- ติดตั้ง `vite-plugin-pwa` (dev dependency) — manifest + service worker ถูกสร้างตอน `npm run build`
+- manifest: `name` "ระบบติดตามยอดค้างชำระ — OK" · `short_name` "OK ยอดค้าง" · `display: standalone` ·
+  `start_url` / `scope` / `id` = `/` · `lang: th` · `theme_color #1c5da3` (`--primary`) ·
+  `background_color #f2f5f4` (`--bg`) — สีทั้งสองมาจาก `docs/ui-reference.html`
+- **ตอน dev (`npm run dev`) ไม่มี service worker** (`devOptions` ปิดอยู่ตามค่าเริ่มต้น)
+  จึงไม่มี cache มากวนตอนแก้โค้ด ต้องทดสอบ PWA จาก `npm run build` + `npm run preview` หรือบน Vercel
+
+**2. ไอคอนสร้างจากโลโก้ "OK" ของแอปเอง**
+
+- ต้นฉบับ: **`public/logo-ok.svg`** — สี่เหลี่ยมมุมมน `#1c5da3` + ตัว "OK" สีขาว (เหมือน `.logo` ในแอป)
+  ตัวอักษรวาดเป็นเส้น (`circle` + `path`) ไม่ใช่ `<text>` → แปลงเป็น PNG ได้โดยไม่ต้องมีฟอนต์ Anuphan
+  ในเครื่อง และได้ผลเหมือนกันทุกเครื่อง
+- สคริปต์: **`scripts/generate-icons.mjs`** (`npm run icons`) อ่าน SVG ต้นฉบับ → เขียน PNG ลง `public/icons/`
+  ใช้ `@resvg/resvg-js` (dev dependency) — **ไม่มีรูปจากอินเทอร์เน็ตแม้แต่ไฟล์เดียว**
+
+| ไฟล์ | ขนาด | ใช้ที่ไหน |
+|---|---|---|
+| `icons/icon-192.png` | 192 | Android / Chrome ทั่วไป |
+| `icons/icon-512.png` | 512 | หน้า splash ตอนเปิดแอป |
+| `icons/icon-512-maskable.png` | 512 | Android `purpose: maskable` — พื้นเต็มภาพ ตัวอักษรย่อ 0.85 ให้อยู่ในวงกลมกลางภาพ 80% |
+| `icons/apple-touch-icon-180.png` | 180 | iPhone (iOS มนมุมให้เอง จึงไม่ทำมุมมนในไฟล์) |
+
+- ลบไฟล์ตัวอย่างที่ติดมากับ Vite ตั้งแต่ M0 ออก: `public/favicon.svg`, `public/icons.svg`
+  (ไม่ใช่โลโก้ของเรา ไม่มีโค้ดไหนเรียกใช้) → `favicon` ชี้ไปที่ `public/logo-ok.svg` แทน
+- **แก้โลโก้ทีหลัง:** แก้ `public/logo-ok.svg` ไฟล์เดียว → `npm run icons` → commit PNG ที่เปลี่ยน
+
+**3. meta สำหรับ iOS (`index.html`)**
+
+- `apple-mobile-web-app-capable` = yes (+ `mobile-web-app-capable` สำหรับ Android)
+- `apple-mobile-web-app-status-bar-style` = **default** → เนื้อหาอยู่**ใต้**แถบสถานะ ไม่ถูกบัง
+  (ถ้าใช้ `black-translucent` เนื้อหาจะไหลขึ้นไปใต้นาฬิกา/แบตเตอรี่)
+- `apple-mobile-web-app-title` = "OK ยอดค้าง" (ชื่อใต้ไอคอนบนหน้าจอหลัก)
+- `theme-color` = `#1c5da3` · `apple-touch-icon` ชี้ไปไฟล์ 180 · `viewport-fit=cover` มีอยู่แล้วตั้งแต่ M0
+
+**4. service worker — cache เฉพาะ app shell**
+
+- `globPatterns` คลุมแค่ไฟล์ที่ build ออกมา (js, css, html, ไอคอน, manifest) = **14 รายการ**
+- **ไม่มี `runtimeCaching` เลยสักข้อ** → service worker ไม่มี route สำหรับคำขอข้ามโดเมน
+  คำขอไป Supabase (ข้อมูล, auth, realtime) และฟอนต์จาก Google **วิ่งออกเน็ตจริงทุกครั้ง ไม่ถูก cache**
+- `navigateFallback: '/index.html'` → เปิด URL ตรง เช่น `/r/<id>` ตอนเน็ตหลุด ยังได้หน้าแอป
+  แล้ว react-router จัดการต่อ (คู่กับ rewrite ของ `vercel.json`)
+- ตรวจแล้วใน `dist/sw.js`: ไม่มีคำว่า `supabase` และมี route เดียวคือ `NavigationRoute`
+- ไม่มีสัญญาณ → คำขอข้อมูลล้มเหลว → แอปขึ้น **"เชื่อมต่ออินเทอร์เน็ตไม่ได้ ตรวจสอบสัญญาณแล้วลองอีกครั้ง"**
+  (ข้อความ `eOffline` ที่มีอยู่แล้วตั้งแต่ M4–M5 ใน `dbError.js`, `format.js`, `LoginPage`, `PasswordDialog`)
+  **ไม่แสดงตัวเลขเก่าจาก cache** ตาม architecture.md ข้อ 8
+
+**5. เวอร์ชันใหม่ไปถึงแอปที่ติดตั้งแล้ว โดยไม่ต้องลบแอป**
+
+- `registerType: 'prompt'` + `src/components/UpdatePrompt.jsx` (แสดงได้ทุกหน้า รวมหน้า login)
+- **ผู้ใช้จะเห็นอะไร:** หลัง deploy เวอร์ชันใหม่ขึ้น Vercel ครั้งต่อไปที่เปิดแอป (หรือสลับกลับมาที่แอป /
+  เน็ตกลับมา / ทุก 1 ชั่วโมงถ้าเปิดค้างไว้) จะมีแถบเล็ก ๆ ขึ้นด้านล่างจอว่า **"มีแอปเวอร์ชันใหม่"**
+  พร้อมปุ่ม **"อัปเดตเดี๋ยวนี้"** และ **"ไว้ก่อน"** (EN: "A new version is available")
+  - กด **อัปเดตเดี๋ยวนี้** → แอปโหลดหน้าใหม่เองใน 1–2 วินาที แล้วได้เวอร์ชันใหม่ (เลขท้ายหน้าเปลี่ยน)
+  - กด **ไว้ก่อน** → ใช้เวอร์ชันเดิมต่อ แล้วได้เวอร์ชันใหม่เองเมื่อ**ปิดแอปทุกหน้าต่างแล้วเปิดใหม่**
+- **ไม่ต้องลบแอปออกจากหน้าจอแล้วติดตั้งใหม่ ไม่ต้องล้าง cache เอง** (`cleanupOutdatedCaches` ลบ cache เก่าให้)
+- ทำไมไม่อัปเดตเงียบ ๆ เอง: ผู้ใช้อาจกำลังกรอกฟอร์มการจ่ายอยู่ การรีโหลดเองจะทำให้ที่พิมพ์ไว้หาย
+- เลขเวอร์ชันท้ายหน้ายังอ่านจาก `src/lib/version.js` ที่เดียวเหมือนเดิม (M5) — ใช้ยืนยันว่าอัปเดตแล้วจริง
+
+**6. ขอบปลอดภัยของ iPhone (safe-area) — `src/index.css`**
+
+- **แก้ของเดิมที่เว้นซ้ำสองชั้น:** เดิม `:root` ใส่ `padding-top/bottom: env(safe-area-inset-*)` และ
+  `.topbar` ก็ `top: env(safe-area-inset-top)` อีกชั้น → บน iPhone ที่ติดตั้งแล้ว แถบบนจะลอยต่ำลงมา
+  เท่าความสูงแถบสถานะ และมีแถบสีพื้นโล่ง ๆ คั่น
+- ใหม่: `:root` ไม่มี padding แล้ว แต่ละส่วนเผื่อขอบของตัวเอง
+  - `.topbar` → `top: 0` + `padding-top: env(safe-area-inset-top)` = สีพื้นแถบบนลากขึ้นถึงขอบจอ
+    ส่วนโลโก้/ชื่อบริษัท/ปุ่มผู้ใช้อยู่ใต้นาฬิกาและแบตเตอรี่เสมอ
+  - `.topbar-in`, `main`, `.login` → เผื่อ `inset-left/right` (รอยบากตอนตะแคงเครื่อง) และ `inset-bottom`
+    (แถบเลื่อนกลับหน้าหลัก) · `.toast` เผื่อ `inset-bottom` อยู่แล้วตั้งแต่ M4 · `.sw-update` เผื่อด้วย
+- กล่อง `<dialog>` ใช้ `showModal()` เบราว์เซอร์จัดกึ่งกลางจอให้ ไม่ติดขอบบน/ล่าง
+
+### ไฟล์ที่เปลี่ยน
+
+| ไฟล์ | เปลี่ยนอะไร |
+|---|---|
+| `package.json` | + `vite-plugin-pwa`, `@resvg/resvg-js` (dev) · + script `icons` |
+| `vite.config.js` | ตั้งค่า `VitePWA` ทั้งหมด (manifest + workbox) |
+| `index.html` | meta ของ iOS, theme-color, apple-touch-icon, favicon ใหม่ |
+| `public/logo-ok.svg` | **ใหม่** — โลโก้ "OK" ต้นฉบับ (ต้นทางของไอคอนทุกไฟล์ + favicon) |
+| `public/icons/*.png` | **ใหม่** — 4 ไฟล์ สร้างจากสคริปต์ |
+| `public/favicon.svg`, `public/icons.svg` | **ลบ** (ไฟล์ตัวอย่างของ Vite ไม่ได้ใช้) |
+| `scripts/generate-icons.mjs` | **ใหม่** — ตัวแปลง SVG → PNG |
+| `src/components/UpdatePrompt.jsx` | **ใหม่** — แถบ "มีแอปเวอร์ชันใหม่" |
+| `src/App.jsx` | แสดง `<UpdatePrompt />` นอก `<Routes>` |
+| `src/lib/i18n.js` | + `swUpdate`, `swUpdateNow`, `swLater` (ไทย/อังกฤษ) |
+| `src/index.css` | safe-area ใหม่ + สไตล์ `.sw-update` |
+| `docs/architecture.md` | ข้อ 8 เขียนรายละเอียดจริง · ข้อ 9 เพิ่ม `scripts/`, `public/icons/`, `UpdatePrompt` |
+
+### ตรวจแล้วว่าผ่าน (ในเครื่อง)
+
+- `npm run build` ผ่าน · `npm run lint` 0 warning (ยังมีคำเตือน chunk > 500 kB เหมือน M3–M5)
+- `npm run icons` รันซ้ำได้ ผลลัพธ์เหมือนเดิม (ไม่ต้องใช้เน็ต ไม่ต้องใช้ฟอนต์)
+- `dist/manifest.webmanifest` มีครบ: name, short_name, display standalone, start_url `/`, lang th,
+  theme_color `#1c5da3`, icons 192 / 512 / maskable 512
+- `dist/index.html` มี meta ของ iOS ครบและลิงก์ `apple-touch-icon`
+- `dist/sw.js`: precache 14 รายการ (เฉพาะไฟล์ของแอป) · **ไม่มีคำว่า `supabase`** ·
+  มี route เดียวคือ `NavigationRoute` · ไม่มี `runtimeCaching`
+- `npm run preview` เสิร์ฟ `/sw.js` (`text/javascript`), `/manifest.webmanifest`
+  (`application/manifest+json`), `/icons/icon-192.png` (`image/png`) ถูกต้อง
+- `npm run dev` ยังทำงานปกติ (virtual module ของ plugin เป็นตัวเปล่าในโหมด dev)
+
+### วิธีทดสอบ (ต้องทำบนเครื่องจริง)
+
+**ก. Chrome DevTools → Application → Manifest (บนคอม — ทำก่อนไปมือถือ)**
+
+1. `npm run build` แล้ว `npm run preview` → เปิด `http://localhost:4173`
+   (หรือเปิด https://ok-receivables.vercel.app หลัง deploy — สมจริงกว่า)
+2. F12 → แท็บ **Application** → **Manifest** ซ้ายมือ ต้องเห็น:
+   - Name "ระบบติดตามยอดค้างชำระ — OK" · Short name "OK ยอดค้าง"
+   - Start URL `/` · Display `standalone` · Theme color เป็นสีน้ำเงิน `#1c5da3`
+   - **Icons** 3 รูป แสดงเป็นโลโก้ OK (ไม่ใช่รูปแตก) และมีรูป `maskable` 512
+   - **ไม่มีกล่องแดงเตือนเรื่อง installability** ด้านบน — ถ้ามีจะบอกว่าขาดอะไร
+3. **Application → Service workers** → ต้องเห็น `sw.js` สถานะ **activated and is running**
+4. **Application → Storage → Cache storage** → เปิด cache `workbox-precache-…` ดูรายการ:
+   ต้องมีแต่ `index.html`, `assets/*.js`, `assets/*.css`, `icons/*.png`, `manifest.webmanifest`
+   **ต้องไม่มี URL ที่ขึ้นต้นด้วย `https://…supabase.co`** (ข้อสำคัญที่สุดของ M6)
+5. **Network** → ล็อกอินแล้วพิมพ์กรอง `supabase` → ทุกแถวต้องมาจาก network จริง
+   คอลัมน์ Size **ต้องไม่ขึ้นว่า `(ServiceWorker)` หรือ `(from cache)`**
+6. ปุ่มติดตั้ง (รูปจอมีลูกศร) บนแถบที่อยู่ของ Chrome → กดแล้วต้องติดตั้งได้ เปิดเป็นหน้าต่างแยก ไม่มีแถบที่อยู่
+
+**ข. iPhone (Safari) — ต้องเปิดผ่าน Safari เท่านั้น**
+
+1. เปิด **Safari** (ไม่ใช่ Chrome บน iPhone) → https://ok-receivables.vercel.app
+2. ปุ่ม **แชร์** (สี่เหลี่ยมมีลูกศรขึ้น ตรงกลางล่าง) → เลื่อนหา **"เพิ่มไปยังหน้าจอโฮม"**
+   (Add to Home Screen) → ต้องเห็น **ไอคอน OK สีน้ำเงิน** และชื่อ **"OK ยอดค้าง"** → กด **เพิ่ม**
+3. ปิด Safari → กดไอคอน OK บนหน้าจอโฮม → ต้องเปิด **เต็มจอ ไม่มีแถบที่อยู่ของ Safari**
+4. **ล็อกอินใหม่อีกครั้งในแอปที่ติดตั้ง** (iOS แยกที่เก็บข้อมูลจาก Safari — architecture.md ข้อ 4)
+5. **ตรวจแถบสถานะ:** นาฬิกา / สัญญาณ / แบตเตอรี่ด้านบน **ต้องไม่ทับ** โลโก้ OK ชื่อบริษัท หรือปุ่มชื่อผู้ใช้
+   เลื่อนหน้าลง → แถบบนยังติดอยู่ที่เดิมและไม่ซ้อนกับแถบสถานะ
+6. **ตะแคงเครื่อง** (รุ่นที่มีรอยบาก) → เนื้อหาไม่โดนรอยบากหรือมุมจอกิน
+7. **เปิดโหมดเครื่องบิน** → ปิดแอปแล้วเปิดใหม่ → แอปยังเปิดได้ (หน้าโหลดจาก cache)
+   แต่ต้องขึ้น **"เชื่อมต่ออินเทอร์เน็ตไม่ได้…"** ไม่ใช่ตัวเลขเก่า → ปิดโหมดเครื่องบิน → กด "ลองอีกครั้ง" → ข้อมูลกลับมา
+8. ทดสอบงานจริง 1 รอบในแอปที่ติดตั้ง (sales บันทึกการจ่าย) ต้องทำงานเหมือนเปิดในเบราว์เซอร์
+
+**ค. Android (Chrome)**
+
+1. เปิด **Chrome** → https://ok-receivables.vercel.app
+2. ต้องมีแถบ **"ติดตั้งแอป"** เด้งขึ้นเอง หรือ เมนู ⋮ → **"ติดตั้งแอป" / "เพิ่มลงในหน้าจอหลัก"**
+   (ถ้าเมนูมีแค่ "สร้างทางลัด" แปลว่า manifest หรือ service worker มีปัญหา → กลับไปข้อ ก.)
+3. ติดตั้งแล้วกดไอคอนบนหน้าจอหลัก → เปิดเต็มจอ ไม่มีแถบที่อยู่ · ไอคอนเป็นโลโก้ OK
+   (ถ้าเครื่องครอบไอคอนเป็นวงกลม ตัว OK ต้องไม่โดนตัด — นั่นคือหน้าที่ของไฟล์ maskable)
+4. สลับไปแอปอื่นแล้วกลับมา (ดูในหน้ารายการแอปที่เปิดอยู่) → ชื่อ/ไอคอนต้องเป็น "OK ยอดค้าง"
+5. ทดสอบออฟไลน์เหมือนข้อ ข.7
+
+**ง. อัปเดตเวอร์ชันใหม่ (ทำครั้งเดียวหลัง deploy ครั้งถัดไป)**
+
+1. ติดตั้งแอปบนมือถือก่อน แล้วเปิดใช้งานค้างไว้
+2. เปลี่ยน `APP_VERSION` ใน `src/lib/version.js` (เช่นเป็น `V0.2`) → `git push` → รอ Vercel deploy เสร็จ
+3. สลับออกจากแอปแล้วกลับเข้ามา → ภายในไม่กี่วินาทีต้องมีแถบ **"มีแอปเวอร์ชันใหม่"** ขึ้นด้านล่างจอ
+4. กด **"อัปเดตเดี๋ยวนี้"** → แอปโหลดใหม่ → **เลขเวอร์ชันท้ายหน้าเปลี่ยนเป็นเลขใหม่**
+   โดย **ไม่ได้ลบแอปออกจากหน้าจอ** และไม่ต้องล็อกอินใหม่
+5. ทดสอบอีกทาง: กด "ไว้ก่อน" → ปิดแอปทุกหน้าต่าง → เปิดใหม่ → ต้องได้เลขเวอร์ชันใหม่เองเหมือนกัน
+
+### ผลทดสอบ (Definition of done)
+
+- [x] `npm run build` และ `npm run lint` ผ่าน
+- [x] ไม่มี secret ใน repo (งานนี้ไม่แตะ key หรือ env เลย)
+- [x] docs อัปเดต: `architecture.md` ข้อ 8–9 · `progress.md` (ไฟล์นี้)
+- [x] ไม่มี migration ใหม่ · ไม่แตะ RLS, ตาราง, trigger
+- [x] service worker ไม่ cache คำขอไป Supabase (ตรวจจาก `dist/sw.js` — ยืนยันซ้ำด้วยข้อ ก.4–ก.5 บนเครื่องจริง)
+- [ ] **ติดตั้งบน iPhone (Safari)** → ข้อ ข. ทั้งหมด — ยังไม่ได้ทำ ต้องทำบนเครื่องจริง
+- [ ] **ติดตั้งบน Android (Chrome)** → ข้อ ค. ทั้งหมด — ยังไม่ได้ทำ
+- [x] **Chrome DevTools → Application → Manifest** (7 ต.ค. 2569 บนคอม ผ่าน `npm run preview`):
+      ไม่มี error · `display: standalone` · ไอคอนครบ · **Service workers = activated**
+      เหลือแค่คำแนะนำของ Chrome เรื่อง `screenshots` ใน manifest ซึ่งเป็นแค่รูปประกอบ
+      ตอนติดตั้งบน Android ไม่ใช่เงื่อนไขการติดตั้ง → **ไม่ทำใน M6**
+- [ ] **ไม่มี error ใน console** บนมือถือ (หลัง deploy)
+- [ ] ทดสอบด้วย 2 บัญชีต่าง role — M6 **ไม่แตะสิทธิ์หรือข้อมูลเลย** ไม่มีช่องไหนในตารางสิทธิ์
+      ของ prd.md ข้อ 9 ที่เปลี่ยน แต่ยังต้องเปิดแอปที่ติดตั้งด้วยทั้ง owner และ sales
+      เพื่อยืนยันว่าล็อกอินได้และเห็นตำแหน่งถูกในแอปที่ติดตั้ง (iOS แยกที่เก็บ session)
+- [x] commit
+
+### สิ่งที่ต้องรู้ / ยังไม่แน่ใจ
+
+- **ฟอนต์ Anuphan ไม่ถูก cache** (มาจาก fonts.googleapis.com ซึ่งเป็นคำขอข้ามโดเมน)
+  → เปิดแอปตอนไม่มีเน็ต ตัวหนังสือจะเป็นฟอนต์สำรองของเครื่อง หน้ายังอ่านออกและใช้งานได้
+  ถ้าอยากให้เหมือนเดิมตอนออฟไลน์ ต้อง cache ฟอนต์เพิ่ม — **ยังไม่ทำ** เพราะ AGENTS.md บอกว่า
+  service worker cache แค่ app shell และฟอนต์ไม่ใช่ไฟล์ของแอป → ถามเจ้าของงานก่อนถ้าจะทำ
+- **ออฟไลน์แล้วเปิดแอปได้ แต่ดูข้อมูลไม่ได้** เป็นพฤติกรรมที่ตั้งใจตาม architecture.md ข้อ 8
+  (ยอมให้เห็น "ออฟไลน์" ดีกว่าเห็นยอดเงินเก่า) — ต้องอธิบายให้ลูกค้าเข้าใจตอนส่งมอบ
+- **iPhone ต้องล็อกอินซ้ำในแอปที่ติดตั้ง** (คนละที่เก็บกับ Safari) — ไม่ใช่บั๊ก แต่ผู้ใช้จะงง
+  ควรบอกตอนช่วยติดตั้งหน้างาน
+- iOS ไม่มีปุ่ม "ติดตั้ง" เด้งเอง ต้องสอนผู้ใช้กด **แชร์ → เพิ่มไปยังหน้าจอโฮม** ด้วยมือ
+- ไอคอนเป็นตัว "OK" ที่วาดด้วยเส้น ไม่ได้ใช้ฟอนต์ Anuphan เหมือน `.logo` ในแอป
+  (ถ้าอยากให้เหมือนเป๊ะต้องมีไฟล์ฟอนต์ในรีโป) — รูปร่าง สี และสัดส่วนตรงกับโลโก้ในแอปแล้ว
