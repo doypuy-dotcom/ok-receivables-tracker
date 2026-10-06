@@ -1,13 +1,17 @@
-// header ตาม ui-reference: โลโก้ + ชื่อบริษัท | ชื่อผู้ใช้ + ตำแหน่ง ▾ (เมนูออกจากระบบ) | ปุ่มภาษา
+// header ตาม ui-reference: โลโก้ + ชื่อบริษัท | ชื่อผู้ใช้ + ตำแหน่ง ▾ (เมนูเปลี่ยนรหัสผ่าน / ออกจากระบบ) | ปุ่มภาษา
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/useAuth.js'
 import { useLang } from '../lib/i18n.js'
+import { useToast } from '../lib/toast.js'
 import LangToggle from './LangToggle.jsx'
+import PasswordDialog from './PasswordDialog.jsx'
 
 export default function Header() {
   const { profile, signOut } = useAuth()
   const { t } = useLang()
+  const toast = useToast()
   const [open, setOpen] = useState(false)
+  const [pwOpen, setPwOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const menuRef = useRef(null)
@@ -72,6 +76,18 @@ export default function Header() {
                 <b>{profile.display_name}</b>
                 <span>{t('role', { r: roleLabel })}</span>
               </div>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  setError('')
+                  setPwOpen(true)
+                }}
+                disabled={busy}
+              >
+                {t('changePw')}
+              </button>
               <button type="button" role="menuitem" onClick={handleLogout} disabled={busy}>
                 {t('logout')}
               </button>
@@ -85,6 +101,15 @@ export default function Header() {
         </div>
         <LangToggle />
       </div>
+      {pwOpen && (
+        <PasswordDialog
+          onClose={() => setPwOpen(false)}
+          onSaved={(msg) => {
+            setPwOpen(false)
+            toast(msg)
+          }}
+        />
+      )}
     </header>
   )
 }

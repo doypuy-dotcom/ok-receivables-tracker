@@ -10,6 +10,7 @@ const T = {
     sales: 'ฝ่ายขาย',
     role: 'ตำแหน่ง: {r}',
     logout: 'ออกจากระบบ',
+    changePw: 'เปลี่ยนรหัสผ่าน',
     loading: 'กำลังโหลด…',
     retry: 'ลองอีกครั้ง',
 
@@ -29,6 +30,18 @@ const T = {
     eProfile: 'โหลดข้อมูลผู้ใช้ไม่ได้ ตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองอีกครั้ง',
     eLogout: 'ออกจากระบบไม่สำเร็จ ลองอีกครั้ง',
     eNotConfigured: 'ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_PUBLISHABLE_KEY',
+
+    // เปลี่ยนรหัสผ่าน (ก่อนส่งมอบ V0.1) — ใช้ได้ทั้ง owner และ sales
+    pwNew: 'รหัสผ่านใหม่',
+    pwConfirm: 'ยืนยันรหัสผ่านใหม่',
+    pwHint: 'อย่างน้อย 8 ตัวอักษร',
+    pwSaved: 'เปลี่ยนรหัสผ่านแล้ว ครั้งต่อไปให้เข้าสู่ระบบด้วยรหัสใหม่',
+    ePwShort: 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร',
+    ePwMismatch: 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน',
+    ePwWeak: 'รหัสผ่านนี้สั้นหรือคาดเดาง่ายเกินไป ใช้รหัสที่ยาวขึ้นหรือผสมตัวเลข',
+    ePwSame: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม',
+    ePwReauth: 'เพื่อความปลอดภัย ต้องออกจากระบบแล้วเข้าสู่ระบบใหม่ ก่อนเปลี่ยนรหัสผ่าน',
+    ePwSave: 'เปลี่ยนรหัสผ่านไม่สำเร็จ ลองอีกครั้ง',
 
     // ตารางยอดค้าง (ui-reference)
     sub: 'ยอดค้างชำระของแต่ละบริษัท แยกตามเดือนที่ครบกำหนด',
@@ -177,6 +190,7 @@ const T = {
     sales: 'Sales',
     role: 'Role: {r}',
     logout: 'Sign out',
+    changePw: 'Change password',
     loading: 'Loading…',
     retry: 'Try again',
 
@@ -196,6 +210,17 @@ const T = {
     eProfile: 'Could not load your account. Check your connection and try again',
     eLogout: 'Could not sign out. Try again',
     eNotConfigured: 'VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are not set',
+
+    pwNew: 'New password',
+    pwConfirm: 'Confirm new password',
+    pwHint: 'At least 8 characters',
+    pwSaved: 'Password changed. Use the new one next time you sign in',
+    ePwShort: 'The new password must be at least 8 characters',
+    ePwMismatch: 'The two new-password fields do not match',
+    ePwWeak: 'That password is too short or too easy to guess. Use a longer one or add numbers',
+    ePwSame: 'The new password must be different from the old one',
+    ePwReauth: 'For security, sign out and sign in again before changing your password',
+    ePwSave: 'Could not change the password. Try again',
 
     sub: 'What each company still owes, grouped by due month',
     asOf: 'Data as of {d}',
