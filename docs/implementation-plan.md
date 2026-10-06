@@ -77,7 +77,7 @@
 - vite-plugin-pwa: manifest, ไอคอน 192/512 + apple-touch-icon, service worker (app shell เท่านั้น)
 - ข้อความ "ออฟไลน์" เมื่อไม่มีสัญญาณ
 - **ทดสอบ:** ติดตั้งบน iPhone (Safari) และ Android (Chrome) → เปิดเต็มจอ มีไอคอน ไม่มีแถบเบราว์เซอร์
-- ทำแล้ว: คอม (DevTools) + **iPhone ผ่าน** · Android ทดสอบตอนส่งมอบ 8 ต.ค. ·
+- ทำแล้ว: คอม (DevTools) + **iPhone ผ่าน** · Android ทดสอบตอนส่งมอบ เช้า 7 ต.ค. ·
   ทดสอบการอัปเดตเวอร์ชันตอนออก V1 → รายละเอียดใน progress.md หัวข้อ M6
 
 ## M7 — ระหว่างทดสอบ (8–19 ต.ค.)
