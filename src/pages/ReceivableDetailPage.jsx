@@ -2,8 +2,11 @@
 // อ่านจาก receivable_summary, payments, audit_logs (+ profiles สำหรับชื่อคนแก้) ไม่คำนวณเงินเอง
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../auth/useAuth.js'
 import EditHistory from '../components/EditHistory.jsx'
+import PaymentForm from '../components/PaymentForm.jsx'
 import PaymentList from '../components/PaymentList.jsx'
+import ReceivableForm from '../components/ReceivableForm.jsx'
 import StatusBars, { LateLine } from '../components/StatusBars.jsx'
 import SummaryDialog from '../components/SummaryDialog.jsx'
 import {
@@ -16,6 +19,7 @@ import {
 import { fmtDate, fmtMonth, loadErrorKey, money } from '../lib/format.js'
 import { buildHistory } from '../lib/history.js'
 import { useLang } from '../lib/i18n.js'
+import { useToast } from '../lib/toast.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -52,12 +56,17 @@ async function loadDetail(id) {
 
 export default function ReceivableDetailPage() {
   const { id } = useParams()
+  const { profile } = useAuth()
   const { t, lang } = useLang()
+  const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const [state, setState] = useState({ status: 'loading', ...EMPTY, error: null })
   const [payMonth, setPayMonth] = useState('all')
   const [showSummary, setShowSummary] = useState(false)
+  // ฟอร์มที่เปิดอยู่: null | { kind: 'rec' } | { kind: 'pay', payment: null | แถวที่กำลังแก้ }
+  const [dialog, setDialog] = useState(null)
+  const isSales = profile.role === 'sales'
 
   const validId = UUID_RE.test(id)
 
@@ -83,6 +92,20 @@ export default function ReceivableDetailPage() {
   }
 
   const goBack = () => navigate('/' + (location.state?.from ?? ''))
+
+  // หลังบันทึก / ยกเลิกการจ่าย: โหลดการ์ดใหม่ (ยอดคงเหลือ แถบ และประวัติการแก้ไขอัปเดตตาม)
+  const afterWrite = (msg) => {
+    setDialog(null)
+    setReloadKey((k) => k + 1)
+    toast(msg)
+  }
+
+  // ยกเลิกการ์ดแล้วการ์ดหายจาก receivable_summary → พากลับหน้าตาราง (ตัวกรองเดิม)
+  const afterCancelCard = (msg) => {
+    setDialog(null)
+    toast(msg)
+    navigate('/' + (location.state?.from ?? ''), { replace: true })
+  }
 
   // เดือนของรายการเงินเข้า (ใหม่ → เก่า) สำหรับตัวเลือก
   const payMonths = useMemo(
@@ -190,6 +213,23 @@ export default function ReceivableDetailPage() {
             <dt>{t('fAdue')}</dt>
             <dd>{fmtDate(lang, row.actual_due_date, true)}</dd>
           </dl>
+          {/* เจ้าของดูอย่างเดียว (prd ข้อ 9) จึงไม่มีปุ่มเพิ่ม/แก้ไขให้เห็นเลย — สิทธิ์จริงบังคับด้วย RLS */}
+          {isSales && (
+            <p className="panel-actions">
+              {!row.is_paid && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => setDialog({ kind: 'pay', payment: null })}
+                >
+                  + {t('addPay')}
+                </button>
+              )}
+              <button type="button" className="btn" onClick={() => setDialog({ kind: 'rec' })}>
+                {t('editRec')}
+              </button>
+            </p>
+          )}
         </section>
 
         <section className="panel-box">
@@ -207,7 +247,10 @@ export default function ReceivableDetailPage() {
           {state.payments.length === 0 ? (
             <div className="empty">{t('noPay')}</div>
           ) : shownPayments.length ? (
-            <PaymentList payments={shownPayments} />
+            <PaymentList
+              payments={shownPayments}
+              onEdit={isSales ? (payment) => setDialog({ kind: 'pay', payment }) : undefined}
+            />
           ) : (
             <div className="empty">{t('noPayMonth')}</div>
           )}
@@ -220,6 +263,24 @@ export default function ReceivableDetailPage() {
       </div>
 
       {showSummary && <SummaryDialog row={row} onClose={() => setShowSummary(false)} />}
+
+      {isSales && dialog?.kind === 'rec' && (
+        <ReceivableForm
+          row={row}
+          onClose={() => setDialog(null)}
+          onSaved={afterWrite}
+          onCancelled={afterCancelCard}
+        />
+      )}
+      {isSales && dialog?.kind === 'pay' && (
+        <PaymentForm
+          row={row}
+          payment={dialog.payment}
+          onClose={() => setDialog(null)}
+          onSaved={afterWrite}
+          onCancelled={afterWrite}
+        />
+      )}
     </>
   )
 }

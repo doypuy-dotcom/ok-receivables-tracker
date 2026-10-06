@@ -4,12 +4,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
+import CompaniesDialog from '../components/CompaniesDialog.jsx'
 import MonthFilter from '../components/MonthFilter.jsx'
 import ReceivableCard from '../components/ReceivableCard.jsx'
+import ReceivableForm from '../components/ReceivableForm.jsx'
 import SummaryDialog from '../components/SummaryDialog.jsx'
-import { fetchLatestPaymentUpdate, fetchSummaries } from '../lib/data.js'
+import { fetchLatestChange, fetchSummaries } from '../lib/data.js'
 import { currentMonthBangkok, fmtMonth, fmtStamp, loadErrorKey, money, sumMoney } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
+import { useToast } from '../lib/toast.js'
 
 const MONTH_RE = /^\d{4}-\d{2}-01$/
 
@@ -24,23 +27,25 @@ function readMonths(params, fallback) {
 const byDue = (a, b) => a.actual_due_date.localeCompare(b.actual_due_date)
 
 async function loadList() {
-  const [summary, latestPay] = await Promise.all([fetchSummaries(), fetchLatestPaymentUpdate()])
-  const error = summary.error ?? latestPay.error
+  const [summary, latest] = await Promise.all([fetchSummaries(), fetchLatestChange()])
+  const error = summary.error ?? latest.error
   if (error) return { status: 'error', rows: [], asOf: null, error: loadErrorKey(error) }
-  // "ข้อมูล ณ" = updated_at ล่าสุดของการ์ด (view) และการจ่าย
-  const stamps = [...summary.data.map((r) => r.updated_at), ...latestPay.data.map((p) => p.updated_at)]
-  const asOf = stamps.reduce((best, s) => (best === null || Date.parse(s) > Date.parse(best) ? s : best), null)
-  return { status: 'ready', rows: summary.data, asOf, error: null }
+  // "ข้อมูล ณ" = เวลาที่ข้อมูลถูกแก้ไขล่าสุด (audit_logs ครอบคลุมการยกเลิกการ์ดและการแก้การจ่ายด้วย)
+  return { status: 'ready', rows: summary.data, asOf: latest.data[0]?.created_at ?? null, error: null }
 }
 
 export default function ReceivablesPage() {
   const { profile } = useAuth()
   const { t, lang } = useLang()
+  const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
   const [state, setState] = useState({ status: 'loading', rows: [], asOf: null, error: null })
   const [summaryRow, setSummaryRow] = useState(null)
+  // ฟอร์มที่เปิดอยู่: null | 'rec' (เพิ่มยอดค้าง) | 'companies'
+  const [dialog, setDialog] = useState(null)
+  const isSales = profile.role === 'sales'
 
   const thisMonth = useMemo(() => currentMonthBangkok(), [])
   const months = useMemo(() => readMonths(params, thisMonth), [params, thisMonth])
@@ -59,6 +64,17 @@ export default function ReceivablesPage() {
   const retry = () => {
     setState((s) => ({ ...s, status: 'loading', error: null }))
     setReloadKey((k) => k + 1)
+  }
+
+  // หลังบันทึก / ยกเลิก: โหลดข้อมูลใหม่ (รวม "ข้อมูล ณ") โดยไม่ล้างหน้าจอเป็นสถานะกำลังโหลด
+  const reload = (msg) => {
+    setReloadKey((k) => k + 1)
+    toast(msg)
+  }
+
+  const afterWrite = (msg) => {
+    setDialog(null)
+    reload(msg)
   }
 
   const setFilter = (nextMonths, nextUnpaid) => {
@@ -110,6 +126,17 @@ export default function ReceivablesPage() {
         <div className="ctl-right">
           {state.status === 'ready' && state.asOf && (
             <span className="pill num">🕘 {t('asOf', { d: fmtStamp(lang, state.asOf) })}</span>
+          )}
+          {/* เจ้าของดูอย่างเดียว (prd ข้อ 9) จึงไม่มีปุ่มเพิ่ม/แก้ไขให้เห็นเลย — สิทธิ์จริงบังคับด้วย RLS */}
+          {isSales && (
+            <div className="actions">
+              <button type="button" className="btn" onClick={() => setDialog('companies')}>
+                {t('companies')}
+              </button>
+              <button type="button" className="btn primary" onClick={() => setDialog('rec')}>
+                + {t('addRec')}
+              </button>
+            </div>
           )}
         </div>
       </section>
@@ -168,12 +195,28 @@ export default function ReceivablesPage() {
               ))}
             </div>
           ) : (
-            <div className="empty">{t('empty')}</div>
+            <div className="empty">
+              {t('empty')}
+              {isSales && (
+                <>
+                  <br />
+                  {t('emptySales')}
+                </>
+              )}
+            </div>
           )}
         </>
       )}
 
       {summaryRow && <SummaryDialog row={summaryRow} onClose={() => setSummaryRow(null)} />}
+
+      {isSales && dialog === 'rec' && (
+        <ReceivableForm row={null} onClose={() => setDialog(null)} onSaved={afterWrite} onCancelled={afterWrite} />
+      )}
+      {isSales && dialog === 'companies' && (
+        /* เพิ่มบริษัทแล้วกล่องยังเปิดอยู่ (เพิ่มติดกันหลายบริษัทได้) ตาม ui-reference */
+        <CompaniesDialog rows={state.rows} onClose={() => setDialog(null)} onSaved={reload} />
+      )}
     </>
   )
 }

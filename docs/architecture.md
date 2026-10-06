@@ -129,13 +129,25 @@ ok-receivables/
     ├── main.jsx, App.jsx     จุดเริ่มต้น + routes
     ├── lib/
     │   ├── supabase.js       client
-    │   ├── format.js         จัดรูปแบบเงิน/วันที่
+    │   ├── data.js           คำสั่งอ่าน/เขียนทั้งหมด (ที่เดียว)
+    │   ├── format.js         จัดรูปแบบเงิน/วันที่ + บวก/เทียบเงินด้วย BigInt
+    │   ├── dbError.js        แปล error ของ database เป็นภาษาคน (schema.md ข้อ 6)
+    │   ├── history.js        เลือก/จัดรายการประวัติการแก้ไข
+    │   ├── toast.js          ข้อความแจ้งผลการบันทึก (แทน window.alert)
+    │   ├── focus.js          โฟกัสช่องแรกบนเครื่องที่มีเมาส์
     │   └── i18n.js           ข้อความไทย/อังกฤษ
     ├── auth/                 หน้า login, ตัวจัดการ session/role
     ├── pages/                ReceivablesPage, ReceivableDetailPage, LoginPage
-    ├── components/           Card, StatusBars, MonthFilter, forms, EditHistory
-    └── styles/               tokens สีและ CSS จาก ui-reference
+    ├── components/           Card, StatusBars, MonthFilter, EditHistory, Dialog,
+    │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton
+    └── index.css             tokens สีและ CSS จาก ui-reference
 ```
+
+- ฟอร์มทุกตัวเป็น dialog ในแอป (`Dialog.jsx`) ไม่มี `window.alert / confirm / prompt`
+  การยกเลิก (soft delete) ใช้ `CancelButton` แบบยืนยัน 2 ขั้นตาม ui-reference
+- ปุ่มเพิ่ม/แก้ไขแสดงเฉพาะ `role = sales` — เป็นเรื่องหน้าจอเท่านั้น สิทธิ์จริงอยู่ที่ RLS
+- `"ข้อมูล ณ"` = `max(audit_logs.created_at)` (ครอบคลุมทุกการเพิ่ม/แก้/ยกเลิก รวมการ์ดที่ถูกยกเลิก
+  ซึ่งหายไปจาก `receivable_summary`)
 
 ## 10. Database migrations
 

@@ -1,5 +1,6 @@
-// คำสั่งอ่านข้อมูลของ M3 — อ่านจาก receivable_summary, payments, audit_logs (+ profiles สำหรับชื่อคนแก้)
+// คำสั่งอ่าน/เขียนข้อมูล — อ่านจาก receivable_summary, payments, audit_logs (+ profiles สำหรับชื่อคนแก้)
 // เงินและ % ขอเป็น text (`::text`) เพื่อไม่ให้ JSON แปลงเป็น float
+// การเขียน (M4) ส่งเฉพาะช่องที่ผู้ใช้กรอก: created_*/updated_* ใส่โดย trigger, audit_logs เขียนโดย trigger
 import { supabase } from './supabase.js'
 
 const SUMMARY_COLUMNS = [
@@ -39,9 +40,11 @@ export function fetchSummary(id) {
   return supabase.from('receivable_summary').select(SUMMARY_COLUMNS).eq('id', id).maybeSingle()
 }
 
-// "ข้อมูล ณ": การแก้ไขการจ่าย (รวมที่ยกเลิก) ไม่เปลี่ยน updated_at ของการ์ด จึงต้องดูจาก payments ด้วย
-export function fetchLatestPaymentUpdate() {
-  return supabase.from('payments').select('updated_at').order('updated_at', { ascending: false }).limit(1)
+// "ข้อมูล ณ" = เวลาที่ข้อมูลถูกแก้ไขล่าสุด (prd ข้อ 6) อ่านจาก audit_logs
+// trigger เขียน audit_logs ทุก insert/update ของ 3 ตารางหลัก จึงครอบคลุมการยกเลิกการ์ด
+// (การ์ดที่ยกเลิกหายไปจาก view, การแก้การจ่ายไม่เปลี่ยน updated_at ของการ์ด — ดู progress.md M4)
+export function fetchLatestChange() {
+  return supabase.from('audit_logs').select('created_at').order('created_at', { ascending: false }).limit(1)
 }
 
 // การจ่ายที่ไม่ถูกยกเลิกของการ์ด เรียงเก่า → ใหม่
@@ -78,4 +81,52 @@ export function fetchCompanyNameLogs(companyIds) {
 
 export function fetchProfiles(ids) {
   return supabase.from('profiles').select('id,display_name').in('id', ids)
+}
+
+// ---------------------------------------------------------------------------
+// รายชื่อบริษัท
+// ---------------------------------------------------------------------------
+
+// ทุกบริษัทรวมที่ปิดอยู่: รายการเลือกแสดงเฉพาะที่เปิด แต่ชื่อซ้ำต้องเทียบกับทั้งหมด (name เป็น unique)
+export function fetchCompanies() {
+  return supabase.from('companies').select('id,name,is_active')
+}
+
+export function insertCompany(name) {
+  return supabase.from('companies').insert({ name }).select('id,name,is_active').single()
+}
+
+// ชื่อตรงกับบริษัทที่ถูกปิดไว้ (เช่นหลัง cleanup ข้อมูล [TEST]) → เปิดกลับมาใช้ ไม่สร้างชื่อซ้ำ
+export function reactivateCompany(id) {
+  return supabase.from('companies').update({ is_active: true }).eq('id', id).select('id')
+}
+
+// ---------------------------------------------------------------------------
+// การ์ดยอดค้าง / การจ่าย
+// update คืน select('id') ด้วย เพื่อรู้ว่า RLS ปล่อยให้แก้จริงไหม (policy ที่ไม่ผ่านคืน 0 แถว ไม่ใช่ error)
+// ---------------------------------------------------------------------------
+
+export function insertReceivable(values) {
+  return supabase.from('receivables').insert(values).select('id').single()
+}
+
+export function updateReceivable(id, values) {
+  return supabase.from('receivables').update(values).eq('id', id).select('id')
+}
+
+export function cancelReceivable(id) {
+  return supabase.from('receivables').update({ is_cancelled: true }).eq('id', id).select('id')
+}
+
+export function insertPayment(values) {
+  return supabase.from('payments').insert(values).select('id').single()
+}
+
+// ไม่มี receivable_id ใน values: การจ่ายอยู่การ์ดเดิมตลอด (schema.md 3.4)
+export function updatePayment(id, values) {
+  return supabase.from('payments').update(values).eq('id', id).select('id')
+}
+
+export function cancelPayment(id) {
+  return supabase.from('payments').update({ is_cancelled: true }).eq('id', id).select('id')
 }

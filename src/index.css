@@ -289,10 +289,25 @@ main {
   padding: 11px 12px;
   font-size: 16px;
 }
+.btn.danger {
+  color: var(--red);
+  border-color: var(--red);
+}
+.btn.danger.armed {
+  background: var(--red);
+  color: var(--surface);
+}
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+/* ปุ่มเพิ่ม/แก้ไขในหน้ารายละเอียด (ฝ่ายขาย) */
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
 }
 
 /* login */
@@ -973,6 +988,122 @@ dialog::backdrop {
   line-height: 1;
   padding: 4px 8px;
   color: var(--muted);
+}
+/* ปุ่มยกเลิก (แดง) อยู่ซ้ายสุด แยกจากปุ่มปิด/บันทึก กันกดพลาด */
+.dlg-f .left {
+  margin-right: auto;
+}
+
+/* ฟอร์มในกล่อง (M4) — ตาม .field / .row2 / .seg / .preview ของ ui-reference */
+.field .lab {
+  font-size: 14px;
+  font-weight: 600;
+}
+.field select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--surface);
+  width: 100%;
+  font-size: 16px;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+/* จอแคบ (มือถือ) เรียงทีละช่อง กันช่องวันที่แคบเกินกด */
+@media (max-width: 480px) {
+  .row2 {
+    grid-template-columns: 1fr;
+  }
+}
+.seg {
+  display: flex;
+  gap: 8px;
+}
+.seg label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.seg input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+.seg label:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.preview {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+.co-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.co-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.co-list li:last-child {
+  border-bottom: 0;
+}
+.co-list span {
+  color: var(--muted);
+}
+/* รายการเงินเข้าที่กดแก้ไขได้ (ฝ่ายขาย) */
+.txn.editable {
+  cursor: pointer;
+  border-radius: 8px;
+}
+.txn.editable:hover {
+  background: var(--surface-2);
+}
+
+/* toast แจ้งผลการบันทึก */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--surface);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s;
+  max-width: calc(100vw - 32px);
+  z-index: 50;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%);
 }
 
 @media (prefers-reduced-motion: reduce) {

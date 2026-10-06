@@ -23,12 +23,32 @@ function toSatang(value) {
   return neg ? -n : n
 }
 
-// ผลรวมของ string เงิน (numeric(14,2)) → string "12345.67"
-export function sumMoney(values) {
-  const total = values.reduce((acc, v) => acc + toSatang(v), 0n)
+function fromSatang(total) {
   const neg = total < 0n
   const abs = neg ? -total : total
   return (neg ? '-' : '') + (abs / 100n).toString() + '.' + (abs % 100n).toString().padStart(2, '0')
+}
+
+// ผลรวมของ string เงิน (numeric(14,2)) → string "12345.67"
+export function sumMoney(values) {
+  return fromSatang(values.reduce((acc, v) => acc + toSatang(v), 0n))
+}
+
+// บวกเงิน 2 ค่าแบบตรงตัว (หน่วยสตางค์) — ใช้หายอดที่ยังบันทึกได้ตอนแก้ไขการจ่าย
+export function addMoney(a, b) {
+  return fromSatang(toSatang(a) + toSatang(b))
+}
+
+// เทียบเงิน 2 ค่า: -1 = a น้อยกว่า, 0 = เท่ากัน, 1 = a มากกว่า (ไม่ใช้ float)
+export function cmpMoney(a, b) {
+  const x = toSatang(a)
+  const y = toSatang(b)
+  return x < y ? -1 : x > y ? 1 : 0
+}
+
+// ข้อความเงินที่ยอมรับจากฟอร์ม: ตัวเลขบวก ทศนิยมไม่เกิน 2 ตำแหน่ง (เก็บเป็น string ไม่แปลงเป็น float)
+export function isMoneyText(s) {
+  return /^\d+(\.\d{1,2})?$/.test(String(s).trim())
 }
 
 // % จาก view เป็น string "0.00"–"100.00" ตัดทศนิยมแล้ว → แสดงเลขเต็ม (99.99 → "99" ไม่ปัดเป็น 100)
@@ -81,6 +101,34 @@ export function currentMonthBangkok() {
     new Date(),
   )
   return ymd.slice(0, 7) + '-01'
+}
+
+// เดือนก่อนตามเวลาไทย "YYYY-MM" — ค่าเริ่มต้นของช่อง "บัญชีเดือน" (ใบวางบิลมักเป็นของเดือนที่ผ่านมา
+// เหมือนค่าเริ่มต้นใน ui-reference) ผู้ใช้เปลี่ยนได้
+export function previousMonthBangkok() {
+  const d = utc(currentMonthBangkok())
+  d.setUTCMonth(d.getUTCMonth() - 1)
+  return d.toISOString().slice(0, 7)
+}
+
+// "2026-10-06" + 60 → "2026-12-05" — ใช้แสดงตัวอย่าง "ครบกำหนดเครดิต" ในฟอร์มเท่านั้น
+// ค่าจริงที่แอปแสดงหลังบันทึกมาจาก receivable_summary.credit_due_date ของ database
+export function addDays(iso, days) {
+  if (!iso || !Number.isFinite(days)) return null
+  const d = utc(iso)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+// "วันนี้" / "เวลานี้" ตามเวลาไทย — ใช้เป็นค่าเริ่มต้นของช่องกรอกเท่านั้น
+export function todayBangkok() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(
+    new Date(),
+  )
+}
+
+export function nowTimeBangkok() {
+  return new Date().toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
 // error จาก supabase-js → key ของ i18n
