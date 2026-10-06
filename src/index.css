@@ -238,6 +238,13 @@ main {
   margin: 0 0 16px;
   color: var(--muted);
 }
+/* เลขเวอร์ชันท้ายหน้า (src/lib/version.js) — ท้าย main ทุกหน้า และท้ายกล่อง login */
+.app-ver {
+  margin: 28px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
 .meta {
   display: flex;
   flex-wrap: wrap;

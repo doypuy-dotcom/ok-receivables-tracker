@@ -1,6 +1,7 @@
 // หน้ารายละเอียดการ์ด ตาม detailView ของ ui-reference + ประวัติการแก้ไข (schema.md 3.5)
 // อ่านจาก receivable_summary, payments, audit_logs (+ profiles สำหรับชื่อคนแก้) ไม่คำนวณเงินเอง
-import { useEffect, useMemo, useState } from 'react'
+// Realtime (M5): มีคนแก้ข้อมูล → โหลดการ์ดนี้ใหม่ และถ้าการ์ดถูกยกเลิกโดยคนอื่น → แจ้งแล้วพากลับหน้าตาราง
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import EditHistory from '../components/EditHistory.jsx'
@@ -19,6 +20,7 @@ import {
 import { fmtDate, fmtMonth, loadErrorKey, money } from '../lib/format.js'
 import { buildHistory } from '../lib/history.js'
 import { useLang } from '../lib/i18n.js'
+import { useLiveReload } from '../lib/live.js'
 import { useToast } from '../lib/toast.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -71,20 +73,39 @@ export default function ReceivableDetailPage() {
   const validId = UUID_RE.test(id)
 
   const [reloadKey, setReloadKey] = useState(0)
+  // การโหลดรอบนี้มาจาก Realtime หรือเปล่า: ถ้าใช่แล้วการ์ดหายไป = คนอื่นยกเลิกขณะเราเปิดดูอยู่
+  // (ต่างจากการเปิดลิงก์ของการ์ดที่ถูกยกเลิกไปก่อนแล้ว ซึ่งแสดงข้อความ "ไม่พบยอดค้างนี้" ค้างไว้)
+  const fromLiveRef = useRef(false)
 
   useEffect(() => {
     if (!validId) return
+    const fromLive = fromLiveRef.current
+    fromLiveRef.current = false
     let alive = true
     loadDetail(id).then((res) => {
       if (!alive) return
       if (res.error) setState({ status: 'error', ...EMPTY, error: loadErrorKey(res.error) })
-      else if (res.notFound) setState({ status: 'notFound', ...EMPTY, error: null })
+      else if (res.notFound) setState({ status: fromLive ? 'gone' : 'notFound', ...EMPTY, error: null })
       else setState({ status: 'ready', ...res.data, error: null })
     })
     return () => {
       alive = false
     }
   }, [id, validId, reloadKey])
+
+  // โหลดใหม่เงียบ ๆ สำหรับ Realtime: ยอดคงเหลือ แถบ รายการเงินเข้า และประวัติการแก้ไขอัปเดตตาม
+  const liveReload = useCallback(() => {
+    fromLiveRef.current = true
+    setReloadKey((k) => k + 1)
+  }, [])
+  useLiveReload(liveReload)
+
+  // การ์ดที่เปิดดูอยู่ถูกยกเลิกโดยคนอื่น → แจ้งข้อความแล้วพากลับหน้าตาราง (ตัวกรองเดิม)
+  useEffect(() => {
+    if (state.status !== 'gone') return
+    toast(t('recGone'))
+    navigate('/' + (location.state?.from ?? ''), { replace: true })
+  }, [state.status, toast, t, navigate, location.state])
 
   const retry = () => {
     setState((s) => ({ ...s, status: 'loading', error: null }))
@@ -126,7 +147,8 @@ export default function ReceivableDetailPage() {
   // id ผิดรูปแบบ (ลิงก์เสีย) → ไม่ต้องถาม database
   const status = validId ? state.status : 'notFound'
 
-  if (status === 'loading') {
+  // 'gone' = การ์ดถูกยกเลิกโดยคนอื่น — effect ด้านบนพากลับหน้าตารางแล้ว แสดงสถานะกำลังโหลดระหว่างนั้น
+  if (status === 'loading' || status === 'gone') {
     return (
       <>
         {back}

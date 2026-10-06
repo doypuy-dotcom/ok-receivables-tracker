@@ -1,7 +1,8 @@
 // หน้าตารางยอดค้างชำระ ตาม listView ของ ui-reference
 // ข้อมูลทั้งหมดจาก receivable_summary (ค่าคำนวณมาจาก view) — แอปแค่กรอง เรียง และจัดรูปแบบ
 // ตัวกรองอยู่ใน URL (?m=2026-10-01,2026-11-01 | ?m=all, &unpaid=1) กดกลับจากหน้ารายละเอียดแล้วยังอยู่
-import { useEffect, useMemo, useState } from 'react'
+// Realtime (M5): มีคนแก้ข้อมูล → โหลดทั้งหน้าใหม่ รวม "ข้อมูล ณ" (useLiveReload)
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import CompaniesDialog from '../components/CompaniesDialog.jsx'
@@ -12,6 +13,7 @@ import SummaryDialog from '../components/SummaryDialog.jsx'
 import { fetchLatestChange, fetchSummaries } from '../lib/data.js'
 import { currentMonthBangkok, fmtMonth, fmtStamp, loadErrorKey, money, sumMoney } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
+import { useLiveReload } from '../lib/live.js'
 import { useToast } from '../lib/toast.js'
 
 const MONTH_RE = /^\d{4}-\d{2}-01$/
@@ -66,7 +68,12 @@ export default function ReceivablesPage() {
     setReloadKey((k) => k + 1)
   }
 
-  // หลังบันทึก / ยกเลิก: โหลดข้อมูลใหม่ (รวม "ข้อมูล ณ") โดยไม่ล้างหน้าจอเป็นสถานะกำลังโหลด
+  // โหลดใหม่เงียบ ๆ (ไม่ขึ้นข้อความ ไม่ล้างหน้าจอเป็นสถานะกำลังโหลด) สำหรับ Realtime
+  // คนอื่นบันทึก → การ์ด ยอดรวม และ "ข้อมูล ณ" อัปเดตตามโดยไม่ต้องรีเฟรช
+  const liveReload = useCallback(() => setReloadKey((k) => k + 1), [])
+  useLiveReload(liveReload)
+
+  // หลังบันทึก / ยกเลิก: โหลดข้อมูลใหม่ (รวม "ข้อมูล ณ") แล้วแจ้งผล
   const reload = (msg) => {
     setReloadKey((k) => k + 1)
     toast(msg)

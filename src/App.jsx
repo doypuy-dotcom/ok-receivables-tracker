@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Header from './components/Header.jsx'
+import { APP_VERSION } from './lib/version.js'
 import LoginPage from './pages/LoginPage.jsx'
 import ReceivableDetailPage from './pages/ReceivableDetailPage.jsx'
 import ReceivablesPage from './pages/ReceivablesPage.jsx'
@@ -9,7 +10,11 @@ function AppShell({ children }) {
   return (
     <RequireAuth>
       <Header />
-      <main>{children}</main>
+      <main>
+        {children}
+        {/* เลขเวอร์ชันท้ายหน้า — ค่าเดียวจาก src/lib/version.js */}
+        <p className="app-ver">{APP_VERSION}</p>
+      </main>
     </RequireAuth>
   )
 }

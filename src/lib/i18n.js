@@ -89,6 +89,8 @@ const T = {
     fTime: 'เวลา',
     close: 'ปิด',
     notFound: 'ไม่พบยอดค้างนี้ อาจถูกยกเลิกไปแล้ว',
+    // การ์ดที่เปิดดูอยู่ถูกยกเลิกโดยคนอื่น (Realtime) → แจ้งแล้วพากลับหน้าตาราง
+    recGone: 'ยอดค้างนี้ถูกยกเลิกแล้ว กลับไปหน้าตาราง',
 
     // สรุปผล (ui-reference)
     sumH: 'สรุปผล',
@@ -252,6 +254,7 @@ const T = {
     fTime: 'Time',
     close: 'Close',
     notFound: 'This receivable was not found. It may have been cancelled',
+    recGone: 'This receivable was cancelled. Going back to the list',
 
     sumH: 'Summary',
     sumPaidOn: 'Paid in full on',

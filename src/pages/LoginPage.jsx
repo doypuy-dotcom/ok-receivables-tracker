@@ -5,6 +5,7 @@ import { useAuth } from '../auth/useAuth.js'
 import LangToggle from '../components/LangToggle.jsx'
 import { useLang } from '../lib/i18n.js'
 import { isConfigured } from '../lib/supabase.js'
+import { APP_VERSION } from '../lib/version.js'
 
 function errorKey(error) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'eOffline'
@@ -117,6 +118,8 @@ export default function LoginPage() {
         )}
 
         <LangToggle />
+        {/* เลขเวอร์ชันท้ายหน้า — ค่าเดียวจาก src/lib/version.js */}
+        <p className="app-ver">{APP_VERSION}</p>
       </div>
     </div>
   )
