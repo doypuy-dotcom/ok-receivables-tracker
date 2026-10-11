@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# รายงานที่มีข้อมูลลูกค้า ห้าม commit
+docs/reports/
