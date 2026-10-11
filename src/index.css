@@ -818,6 +818,7 @@ main {
   .detail-grid {
     grid-template-columns: 1fr 1.2fr;
   }
+  .notes-box,
   .history-box {
     grid-column: 1 / -1;
   }
@@ -1013,13 +1014,21 @@ dialog::backdrop {
   font-size: 14px;
   font-weight: 600;
 }
-.field select {
+.field select,
+.field textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px 10px;
   background: var(--surface);
+  color: inherit;
   width: 100%;
+  /* 16px กัน iPhone Safari ซูมเข้าเมื่อแตะช่องกรอก */
   font-size: 16px;
+}
+.field textarea {
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
 }
 .hint {
   font-size: 12.5px;
@@ -1294,4 +1303,76 @@ dialog::backdrop {
 .card-cta .btn {
   align-self: center;
   padding: 5px 10px;
+}
+
+/* หมายเหตุบนการ์ด (V1 รอบ ข) — ในหน้ารายละเอียด: ใครเขียน + เมื่อไหร่ + ข้อความ
+   รูปแบบเดียวกับ .hist (ประวัติการแก้ไข) เพราะเป็นรายการเรียงตามเวลาเหมือนกัน */
+.notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notes > li {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+}
+.notes > li:last-child {
+  border-bottom: 0;
+}
+.note-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+}
+.note-head span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.note-body {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  /* ผู้ใช้ขึ้นบรรทัดใหม่เองในหมายเหตุได้ และคำยาว ๆ ต้องไม่ล้นกล่อง */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.note-form {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+/* หมายเหตุล่าสุดบนการ์ดในหน้าตาราง — เจ้าของเห็นโดยไม่ต้องกดเข้าหน้ารายละเอียด */
+.card-note {
+  border-top: 1px dashed var(--line);
+  margin: 0 14px;
+  padding: 10px 0 12px;
+  display: grid;
+  gap: 2px;
+}
+.card-note p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.card-note span.num {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+@media (min-width: 640px) {
+  .card-note {
+    margin: 0 18px;
+  }
+}
+
+/* คะแนน 1–5 ของกล่องส่งความคิดเห็น — 5 ช่องเท่ากัน ตัวเลขอยู่กลาง */
+.seg-score label {
+  flex: 1;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  padding: 9px 4px;
 }

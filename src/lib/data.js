@@ -130,3 +130,44 @@ export function updatePayment(id, values) {
 export function cancelPayment(id) {
   return supabase.from('payments').update({ is_cancelled: true }).eq('id', id).select('id')
 }
+
+// ---------------------------------------------------------------------------
+// หมายเหตุบนการ์ด (V1 รอบ ข — schema.md 3.6)
+// ต่อท้ายอย่างเดียว: มีแต่ insert ไม่มี update / cancel / delete
+// created_by / created_at ใส่โดย trigger — แอปส่งแค่ receivable_id กับ body
+// ---------------------------------------------------------------------------
+
+// ความยาวสูงสุดของหมายเหตุ = constraint receivable_notes_body_len ใน 005_notes_and_feedback.sql
+export const NOTE_MAX_LEN = 1000
+
+// หมายเหตุทุกแถวของการ์ด เรียงใหม่ → เก่า (ทั้ง owner และ sales อ่านได้)
+export function fetchNotes(receivableId) {
+  return supabase
+    .from('receivable_notes')
+    .select('id,body,created_by,created_at')
+    .eq('receivable_id', receivableId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+}
+
+// หมายเหตุล่าสุด 1 แถวต่อ 1 การ์ด สำหรับการ์ดในหน้าตาราง (schema.md 4.1)
+export function fetchLatestNotes() {
+  return supabase.from('receivable_latest_note').select('receivable_id,body,created_at')
+}
+
+export function insertNote(receivableId, body) {
+  return supabase.from('receivable_notes').insert({ receivable_id: receivableId, body }).select('id').single()
+}
+
+// ---------------------------------------------------------------------------
+// feedback เกี่ยวกับแอป (V1 รอบ ข — schema.md 3.7, prd.md ข้อ 11)
+// user_id / role / created_at ใส่โดย trigger · app_version ส่งจาก src/lib/version.js
+// อ่านได้แค่แถวของตัวเอง (RLS) และไม่มี update / delete ให้ใคร
+// ---------------------------------------------------------------------------
+
+// ความยาวสูงสุดของข้อความ = constraint app_feedback_issues_len ใน 005_notes_and_feedback.sql
+export const FEEDBACK_ISSUES_MAX_LEN = 2000
+
+export function insertFeedback(values) {
+  return supabase.from('app_feedback').insert(values).select('id').single()
+}

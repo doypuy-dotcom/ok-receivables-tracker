@@ -14,6 +14,15 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
 - Role checks happen in RLS policies (via `public.my_role()`), not only in the UI. Hiding a button is not security.
 - No DELETE on any table. No DELETE policies. Use `is_cancelled` / `is_active`.
 - `audit_logs` is written only by database triggers. Never insert, update or delete it from the app.
+- **Append-only tables — the one documented exception to "every write goes to `audit_logs`"**:
+  `receivable_notes` and `app_feedback` have **no UPDATE and no DELETE policy for anyone**, and so
+  no `audit_logs` trigger and no `is_cancelled` column. The only possible action is inserting a new
+  row, and a row can never change afterwards, so the table is already its own history — an
+  `audit_logs` row would duplicate it character for character and add nothing.
+  A wrong note is corrected by **writing another note**; both stay visible.
+  They also have no `updated_at` / `updated_by` for the same reason (schema.md 1 and 3.6).
+  Do not add UPDATE policies, `is_cancelled`, or audit triggers to these two tables without asking.
+  Every *other* table keeps the full rule: audit trigger in the same migration, no DELETE.
 - Users cannot change their own role. No UPDATE policy on `profiles`.
 - Sign-up is disabled. Do not build a sign-up screen.
 

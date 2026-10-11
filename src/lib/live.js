@@ -11,8 +11,9 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from './supabase.js'
 
-// ตารางที่เปิด Realtime ใน 004_realtime.sql
-const TABLES = ['companies', 'receivables', 'payments', 'audit_logs']
+// ตารางที่เปิด Realtime ใน 004_realtime.sql และ 005_notes_and_feedback.sql (receivable_notes)
+// app_feedback ไม่อยู่ในนี้: ไม่มีหน้าจอไหนต้องอัปเดตตาม และอ่านได้แค่แถวของตัวเอง
+const TABLES = ['companies', 'receivables', 'payments', 'audit_logs', 'receivable_notes']
 
 // หน่วงก่อนโหลด: รวบ event ที่มาติดกันจากการบันทึกครั้งเดียวให้เป็นการโหลดครั้งเดียว
 const BURST_MS = 400

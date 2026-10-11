@@ -1,5 +1,5 @@
 // การ์ด 1 ใบในหน้าตาราง ตาม ui-reference: ยังค้าง (ยอด + แถบ 3 แถบ) หรือ จ่ายแล้ว (+ ปุ่มสรุปผล)
-import { fmtDate, fmtMonth, money } from '../lib/format.js'
+import { fmtDate, fmtMonth, fmtStamp, money } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
 import StatusBars, { LateLine } from './StatusBars.jsx'
 
@@ -8,8 +8,19 @@ function cardStatusClass(row) {
   return row.days_to_actual_due < 0 ? 's-over' : 's-open'
 }
 
+// ตัดหมายเหตุบนการ์ดให้สั้น: บนการ์ดเอาแค่พอรู้เรื่อง อ่านเต็มในหน้ารายละเอียด
+const NOTE_PREVIEW_LEN = 90
+
+function notePreview(body) {
+  // ขึ้นบรรทัดใหม่กลางข้อความทำให้การ์ดสูงไม่เท่ากัน → รวบเป็นช่องว่างเดียว
+  const one = body.replace(/\s+/g, ' ').trim()
+  return one.length > NOTE_PREVIEW_LEN ? one.slice(0, NOTE_PREVIEW_LEN).trimEnd() + '…' : one
+}
+
 // onAddPay: ฝ่ายขายเท่านั้น และการ์ดที่ยังค้างเท่านั้น (ไม่ส่งมาก็ไม่มีปุ่ม) — V1 รอบ ก
-export default function ReceivableCard({ row, onOpen, onSummary, onAddPay }) {
+// note: หมายเหตุล่าสุดของการ์ดจาก view receivable_latest_note (ไม่มีหมายเหตุ = undefined) — V1 รอบ ข
+//       เจ้าของจึงเห็นสิ่งที่ฝ่ายขายรายงานโดยไม่ต้องกดเข้าหน้ารายละเอียด (prd.md ข้อ 5 รายการที่ 11)
+export default function ReceivableCard({ row, note, onOpen, onSummary, onAddPay }) {
   const { t, lang } = useLang()
 
   const onKeyDown = (e) => {
@@ -92,6 +103,13 @@ export default function ReceivableCard({ row, onOpen, onSummary, onAddPay }) {
             <span className="status-tag">{t('status')}</span>
             <StatusBars row={row} />
           </div>
+        </div>
+      )}
+      {note && (
+        <div className="card-note">
+          <span className="status-tag">{t('notesH')}</span>
+          <p>{notePreview(note.body)}</p>
+          <span className="num">{fmtStamp(lang, note.created_at)}</span>
         </div>
       )}
     </article>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import EditHistory from '../components/EditHistory.jsx'
+import NotesPanel from '../components/NotesPanel.jsx'
 import PaymentForm from '../components/PaymentForm.jsx'
 import PaymentList from '../components/PaymentList.jsx'
 import ReceivableForm from '../components/ReceivableForm.jsx'
@@ -13,6 +14,7 @@ import SummaryDialog from '../components/SummaryDialog.jsx'
 import {
   fetchCompanyNameLogs,
   fetchEditLogs,
+  fetchNotes,
   fetchPayments,
   fetchProfiles,
   fetchSummary,
@@ -25,16 +27,22 @@ import { useToast } from '../lib/toast.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const EMPTY = { row: null, payments: [], history: [], userNames: {}, companyNames: {} }
+const EMPTY = { row: null, payments: [], history: [], notes: [], userNames: {}, companyNames: {} }
 
 async function loadDetail(id) {
-  const [summary, payments, logs] = await Promise.all([fetchSummary(id), fetchPayments(id), fetchEditLogs(id)])
-  const error = summary.error ?? payments.error ?? logs.error
+  const [summary, payments, logs, notes] = await Promise.all([
+    fetchSummary(id),
+    fetchPayments(id),
+    fetchEditLogs(id),
+    fetchNotes(id),
+  ])
+  const error = summary.error ?? payments.error ?? logs.error ?? notes.error
   if (error) return { error }
   if (!summary.data) return { notFound: true }
 
   const history = buildHistory(logs.data)
-  const userIds = [...new Set(history.map((h) => h.log.user_id))]
+  // ชื่อคนที่ต้องแสดง: คนแก้ไขในประวัติ + คนเขียนหมายเหตุ (ขอ profiles ครั้งเดียว)
+  const userIds = [...new Set([...history.map((h) => h.log.user_id), ...notes.data.map((n) => n.created_by)])]
   const companyIds = [
     ...new Set(
       history.flatMap((h) => (h.changed.includes('company_id') ? [h.oldV.company_id, h.newV.company_id] : [])),
@@ -53,7 +61,9 @@ async function loadDetail(id) {
   const companyNames = Object.fromEntries(companyLogs.data.map((l) => [l.record_id, l.new_value?.name]))
   companyNames[summary.data.company_id] = summary.data.company_name
 
-  return { data: { row: summary.data, payments: payments.data, history, userNames, companyNames } }
+  return {
+    data: { row: summary.data, payments: payments.data, history, notes: notes.data, userNames, companyNames },
+  }
 }
 
 export default function ReceivableDetailPage() {
@@ -117,6 +127,12 @@ export default function ReceivableDetailPage() {
   // หลังบันทึก / ยกเลิกการจ่าย: โหลดการ์ดใหม่ (ยอดคงเหลือ แถบ และประวัติการแก้ไขอัปเดตตาม)
   const afterWrite = (msg) => {
     setDialog(null)
+    setReloadKey((k) => k + 1)
+    toast(msg)
+  }
+
+  // เขียนหมายเหตุแล้ว: โหลดใหม่เพื่อให้รายการใหม่ขึ้น (ฟอร์มยังเปิดอยู่ เขียนต่อได้อีก)
+  const afterNote = (msg) => {
     setReloadKey((k) => k + 1)
     toast(msg)
   }
@@ -276,6 +292,17 @@ export default function ReceivableDetailPage() {
           ) : (
             <div className="empty">{t('noPayMonth')}</div>
           )}
+        </section>
+
+        {/* หมายเหตุ (V1 รอบ ข): เจ้าของอ่านได้ ฝ่ายขายเขียนได้ — แก้/ลบไม่ได้ทั้งคู่ (schema.md 3.6) */}
+        <section className="panel-box notes-box">
+          <NotesPanel
+            receivableId={row.id}
+            notes={state.notes}
+            userNames={state.userNames}
+            canWrite={isSales}
+            onSaved={afterNote}
+          />
         </section>
 
         <section className="panel-box history-box">

@@ -11,7 +11,7 @@ import PaymentForm from '../components/PaymentForm.jsx'
 import ReceivableCard from '../components/ReceivableCard.jsx'
 import ReceivableForm from '../components/ReceivableForm.jsx'
 import SummaryDialog from '../components/SummaryDialog.jsx'
-import { fetchLatestChange, fetchSummaries } from '../lib/data.js'
+import { fetchLatestChange, fetchLatestNotes, fetchSummaries } from '../lib/data.js'
 import { currentMonthBangkok, fmtMonth, fmtStamp, loadErrorKey, money, sumMoney } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
 import { useLiveReload } from '../lib/live.js'
@@ -30,11 +30,18 @@ function readMonths(params, fallback) {
 const byDue = (a, b) => a.actual_due_date.localeCompare(b.actual_due_date)
 
 async function loadList() {
-  const [summary, latest] = await Promise.all([fetchSummaries(), fetchLatestChange()])
-  const error = summary.error ?? latest.error
-  if (error) return { status: 'error', rows: [], asOf: null, error: loadErrorKey(error) }
+  const [summary, latest, notes] = await Promise.all([fetchSummaries(), fetchLatestChange(), fetchLatestNotes()])
+  const error = summary.error ?? latest.error ?? notes.error
+  if (error) return { status: 'error', rows: [], asOf: null, notes: {}, error: loadErrorKey(error) }
   // "ข้อมูล ณ" = เวลาที่ข้อมูลถูกแก้ไขล่าสุด (audit_logs ครอบคลุมการยกเลิกการ์ดและการแก้การจ่ายด้วย)
-  return { status: 'ready', rows: summary.data, asOf: latest.data[0]?.created_at ?? null, error: null }
+  // หมายเหตุล่าสุดมาจาก view receivable_latest_note (1 แถวต่อ 1 การ์ด — schema.md 4.1)
+  return {
+    status: 'ready',
+    rows: summary.data,
+    asOf: latest.data[0]?.created_at ?? null,
+    notes: Object.fromEntries(notes.data.map((n) => [n.receivable_id, n])),
+    error: null,
+  }
 }
 
 export default function ReceivablesPage() {
@@ -44,7 +51,7 @@ export default function ReceivablesPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
-  const [state, setState] = useState({ status: 'loading', rows: [], asOf: null, error: null })
+  const [state, setState] = useState({ status: 'loading', rows: [], asOf: null, notes: {}, error: null })
   const [summaryRow, setSummaryRow] = useState(null)
   // ฟอร์มที่เปิดอยู่: null | 'rec' (เพิ่มยอดค้าง) | 'companies'
   const [dialog, setDialog] = useState(null)
@@ -203,7 +210,13 @@ export default function ReceivablesPage() {
                     <div className="carry-note">
                       {t('carryNote', { m: fmtMonth(lang, row.due_month, true), a: money(row.balance) })}
                     </div>
-                    <ReceivableCard row={row} onOpen={openCard} onSummary={setSummaryRow} onAddPay={addPay} />
+                    <ReceivableCard
+                      row={row}
+                      note={state.notes[row.id]}
+                      onOpen={openCard}
+                      onSummary={setSummaryRow}
+                      onAddPay={addPay}
+                    />
                   </div>
                 ))}
               </div>
@@ -217,6 +230,7 @@ export default function ReceivablesPage() {
                 <ReceivableCard
                   key={row.id}
                   row={row}
+                  note={state.notes[row.id]}
                   onOpen={openCard}
                   onSummary={setSummaryRow}
                   onAddPay={addPay}

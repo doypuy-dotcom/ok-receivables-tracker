@@ -85,6 +85,8 @@
 | ห้ามลบ | ไม่มี policy DELETE สำหรับใครเลย |
 | ประวัติการแก้ไขครบ | trigger บนตารางหลัก เขียน `audit_logs` ทุก insert/update |
 | ห้ามแก้ role ตัวเอง | ไม่มี policy UPDATE บน `profiles` |
+| หมายเหตุและ feedback แก้/ลบไม่ได้ | ไม่มี policy UPDATE / DELETE บน `receivable_notes`, `app_feedback` (append-only — schema.md 3.6) |
+| feedback เห็นได้แค่เจ้าของคำตอบ | policy SELECT ของ `app_feedback` คือ `user_id = auth.uid()` |
 
 ## 6. เวลาและวันที่
 
@@ -94,9 +96,13 @@
 
 ## 7. Realtime
 
-- เปิด Realtime ให้ **4 ตาราง** ใน `004_realtime.sql`: `companies`, `receivables`, `payments`, `audit_logs`
-  (`audit_logs` ด้วย เพราะ `"ข้อมูล ณ"` และประวัติการแก้ไขอ่านจากตารางนี้, `companies` เพราะชื่อบริษัทเปลี่ยนได้)
-- แอป subscribe การเปลี่ยนแปลง แล้ว**โหลดใหม่จาก view / ตาราง** (`receivable_summary`, `payments`, `audit_logs`)
+- เปิด Realtime ให้ **5 ตาราง**: `companies`, `receivables`, `payments`, `audit_logs` ใน `004_realtime.sql`
+  และ `receivable_notes` ใน `005_notes_and_feedback.sql`
+  (`audit_logs` ด้วย เพราะ `"ข้อมูล ณ"` และประวัติการแก้ไขอ่านจากตารางนี้, `companies` เพราะชื่อบริษัทเปลี่ยนได้,
+  `receivable_notes` เพราะฝ่ายขายเขียนหมายเหตุบนคอมแล้วเจ้าของต้องเห็นบนมือถือทันที)
+- **`app_feedback` ไม่เปิด Realtime:** ไม่มีหน้าจอไหนต้องอัปเดตตาม และอ่านได้แค่แถวของตัวเอง
+- แอป subscribe การเปลี่ยนแปลง แล้ว**โหลดใหม่จาก view / ตาราง**
+  (`receivable_summary`, `receivable_latest_note`, `payments`, `audit_logs`, `receivable_notes`)
   **ไม่คำนวณเองจาก event** — event เป็นแค่สัญญาณว่า "มีของใหม่" ค่าเงินและสถานะยังมาจาก database เสมอ
 - **รวบ event ที่มาติดกันเป็นการโหลดครั้งเดียว** (หน่วง 400 ms): การบันทึก 1 ครั้งทำให้เกิดหลาย event
   เสมอ (แถวในตารางหลัก + แถวใน `audit_logs` ที่ trigger เขียน)
@@ -116,7 +122,8 @@
 
 ## 7.1 เลขเวอร์ชันของแอป
 
-- `src/lib/version.js` export `APP_VERSION` — **ที่เดียวในโปรเจกต์** เปลี่ยนที่นี่ตอนออก V1 / V2
+- `src/lib/version.js` export `APP_VERSION` — **ที่เดียวในโปรเจกต์** (ตอนนี้ `V1`) เปลี่ยนที่นี่ตอนออก V2
+  ค่านี้ถูกแนบไปกับทุกแถวของ `app_feedback` ด้วย (prd.md ข้อ 11) เพื่อเทียบผลแต่ละเวอร์ชัน
 - แสดงท้าย `main` ทุกหน้า และท้ายกล่อง login (class `.app-ver`)
   เพื่อให้ลูกค้าบอกได้ว่ากำลังใช้เวอร์ชันไหนตอนแจ้ง feedback
 - `version` ใน `package.json` เป็นข้อมูลของ npm เท่านั้น แอปไม่ได้อ่าน
@@ -165,7 +172,8 @@ ok-receivables/
 ├── docs/                     prd, schema, architecture, implementation-plan, progress, ui-reference
 ├── supabase/
 │   ├── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
-│   ├── tests/                m1_checks.sql, m2_checks.sql … (ตรวจ RLS แบบ PASS/FAIL)
+│   ├── tests/                m1_checks.sql … v1_checks.sql (ตรวจ RLS / กฎ แบบ PASS/FAIL)
+│   ├── queries/              feedback_report.sql (สรุป feedback แยกตามเวอร์ชัน × role — อ่านอย่างเดียว)
 │   └── seed/                 test_data.sql (ข้อมูล [TEST]), cleanup_test_data.sql (ยกเลิก/ปิด [TEST])
 ├── vercel.json               rewrite ทุก path → index.html (react-router)
 ├── scripts/
@@ -183,14 +191,15 @@ ok-receivables/
     │   ├── history.js        เลือก/จัดรายการประวัติการแก้ไข
     │   ├── toast.js          ข้อความแจ้งผลการบันทึก (แทน window.alert)
     │   ├── live.js           Realtime: subscribe แล้วโหลดใหม่ (รวบ event + ตอนกลับมาที่แอป/เน็ตกลับมา)
-    │   ├── version.js        APP_VERSION ("V0.1") — ที่เดียวในโปรเจกต์
+    │   ├── version.js        APP_VERSION ("V1") — ที่เดียวในโปรเจกต์
     │   ├── focus.js          โฟกัสช่องแรกบนเครื่องที่มีเมาส์
     │   └── i18n.js           ข้อความไทย/อังกฤษ
     ├── auth/                 หน้า login, ตัวจัดการ session/role
     ├── pages/                ReceivablesPage, ReceivableDetailPage, LoginPage
     ├── components/           Card, StatusBars, MonthFilter, EditHistory, Dialog,
     │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton,
-    │                         UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่")
+    │                         DateField (ช่องวันที่ของแอป), NotesPanel (หมายเหตุบนการ์ด),
+    │                         FeedbackDialog (ส่งความคิดเห็น), UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่")
     └── index.css             tokens สีและ CSS จาก ui-reference
 ```
 
@@ -221,4 +230,4 @@ ok-receivables/
 
 ## 12. ยังไม่ได้ออกแบบ
 
-- ระบบเก็บ feedback (prd ข้อ 11) — รอคำตอบจากการสัมภาษณ์
+- (ว่าง) — ระบบเก็บ feedback ออกแบบและทำแล้วใน V1 รอบ ข (prd ข้อ 11, schema.md ข้อ 3.7)

@@ -1,8 +1,10 @@
-// header ตาม ui-reference: โลโก้ + ชื่อบริษัท | ชื่อผู้ใช้ + ตำแหน่ง ▾ (เมนูเปลี่ยนรหัสผ่าน / ออกจากระบบ) | ปุ่มภาษา
+// header ตาม ui-reference: โลโก้ + ชื่อบริษัท | ชื่อผู้ใช้ + ตำแหน่ง ▾ | ปุ่มภาษา
+// เมนูชื่อผู้ใช้: เปลี่ยนรหัสผ่าน · ส่งความคิดเห็น (V1 รอบ ข — prd.md ข้อ 11) · ออกจากระบบ
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/useAuth.js'
 import { useLang } from '../lib/i18n.js'
 import { useToast } from '../lib/toast.js'
+import FeedbackDialog from './FeedbackDialog.jsx'
 import LangToggle from './LangToggle.jsx'
 import PasswordDialog from './PasswordDialog.jsx'
 
@@ -12,6 +14,7 @@ export default function Header() {
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
+  const [fbOpen, setFbOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const menuRef = useRef(null)
@@ -88,6 +91,18 @@ export default function Header() {
               >
                 {t('changePw')}
               </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  setError('')
+                  setFbOpen(true)
+                }}
+                disabled={busy}
+              >
+                {t('fbMenu')}
+              </button>
               <button type="button" role="menuitem" onClick={handleLogout} disabled={busy}>
                 {t('logout')}
               </button>
@@ -106,6 +121,15 @@ export default function Header() {
           onClose={() => setPwOpen(false)}
           onSaved={(msg) => {
             setPwOpen(false)
+            toast(msg)
+          }}
+        />
+      )}
+      {fbOpen && (
+        <FeedbackDialog
+          onClose={() => setFbOpen(false)}
+          onSent={(msg) => {
+            setFbOpen(false)
             toast(msg)
           }}
         />

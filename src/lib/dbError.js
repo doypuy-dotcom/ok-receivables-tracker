@@ -7,6 +7,8 @@ const BY_NAME = [
   ['not_authenticated', 'eNotAuth'],
   ['payments_exceed_total', 'eOverTotal'],
   ['total_below_paid', 'eTotalBelowPaid'],
+  // ต้องอยู่ก่อน receivable_cancelled: ชื่อยาวกว่าและมีชื่อสั้นซ้อนอยู่ข้างใน
+  ['note_receivable_cancelled', 'eNoteCancelled'],
   ['receivable_cancelled', 'eRecCancelled'],
   ['payment_receivable_immutable', 'ePayMoved'],
   ['companies_name_trimmed', 'eCoName'],
@@ -17,6 +19,16 @@ const BY_NAME = [
   ['receivables_credit_days_positive', 'eDays'],
   ['receivables_due_after_start', 'eDue'],
   ['payments_amount_positive', 'eAmt'],
+  // หมายเหตุบนการ์ด + feedback (V1 รอบ ข — schema.md 3.6, 3.7)
+  ['receivable_notes_body_trimmed', 'eNoteEmpty'],
+  ['receivable_notes_body_len', 'eNoteLong'],
+  ['app_feedback_helpful_range', 'eFbHelpful'],
+  ['app_feedback_owner_question', 'eFbRole'],
+  ['app_feedback_sales_question', 'eFbRole'],
+  ['app_feedback_asks_range', 'eFbRange'],
+  ['app_feedback_minutes_range', 'eFbRange'],
+  ['app_feedback_issues_trimmed', 'eFbIssues'],
+  ['app_feedback_issues_len', 'eFbIssues'],
 ]
 
 // error จาก supabase-js ตอน "เขียน" → key ของ i18n (ใช้กับ t())
