@@ -16,6 +16,7 @@ import { useDesktopFocus } from '../lib/focus.js'
 import { addDays, fmtDate, isMoneyText, loadErrorKey, previousMonthBangkok } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
 import CancelButton from './CancelButton.jsx'
+import DateField, { MonthField } from './DateField.jsx'
 import Dialog from './Dialog.jsx'
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/
@@ -87,15 +88,17 @@ export default function ReceivableForm({ row, onClose, onSaved, onCancelled }) {
     [companies],
   )
 
-  const set = (key) => (e) => {
-    const value = e.target.value
+  // ช่องวันที่ของแอป (DateField / MonthField) ส่งค่าเป็น string ส่วนช่องอื่นส่ง event มา
+  const setValue = (key, value) => {
     setV((prev) => {
       // ใส่วันเริ่มนับเครดิตแล้วช่อง "วันเริ่มนับวันจริง" ยังว่าง → เติมให้ (ส่วนใหญ่เป็นวันเดียวกัน) แก้ทับได้
-      if (key === 'cstart' && !prev.astart) return { ...prev, cstart: value, astart: value }
+      if (key === 'cstart' && value && !prev.astart) return { ...prev, cstart: value, astart: value }
       return { ...prev, [key]: value }
     })
     setErr('')
   }
+
+  const set = (key) => (e) => setValue(key, e.target.value)
 
   const creditDue = /^\d+$/.test(v.cdays.trim()) ? addDays(v.cstart, Number(v.cdays)) : null
 
@@ -230,18 +233,8 @@ export default function ReceivableForm({ row, onClose, onSaved, onCancelled }) {
         </datalist>
       </div>
       <div className="row2">
-        <div className="field">
-          <label htmlFor="f-acct">{t('fAcct')}</label>
-          {/* เบราว์เซอร์ที่ไม่รู้จัก type=month จะกลายเป็นช่องข้อความ จึงมี placeholder + pattern กำกับ */}
-          <input
-            id="f-acct"
-            type="month"
-            placeholder="2026-09"
-            pattern="\d{4}-\d{2}"
-            value={v.acct}
-            onChange={set('acct')}
-          />
-        </div>
+        {/* ช่องของแอปเอง: พิมพ์ ดด/ปปปป (ปี พ.ศ.) + ไอคอนเลือกเดือน — เลิกใช้ type="month" ที่เป็นภาษาอังกฤษ */}
+        <MonthField id="f-acct" label={t('fAcct')} value={v.acct} onChange={(x) => setValue('acct', x)} />
         <div className="field">
           <label htmlFor="f-total">{t('fTotal')}</label>
           <input
@@ -260,23 +253,14 @@ export default function ReceivableForm({ row, onClose, onSaved, onCancelled }) {
           <label htmlFor="f-cdays">{t('fCdays')}</label>
           <input id="f-cdays" type="number" inputMode="numeric" min="1" value={v.cdays} onChange={set('cdays')} />
         </div>
-        <div className="field">
-          <label htmlFor="f-cstart">{t('fCstart')}</label>
-          <input id="f-cstart" type="date" value={v.cstart} onChange={set('cstart')} />
-        </div>
+        <DateField id="f-cstart" label={t('fCstart')} value={v.cstart} onChange={(x) => setValue('cstart', x)} />
       </div>
       <div className="preview num" aria-live="polite">
         {t('previewCredit', { d: creditDue ? fmtDate(lang, creditDue, true) : '–' })}
       </div>
       <div className="row2">
-        <div className="field">
-          <label htmlFor="f-astart">{t('fAstart')}</label>
-          <input id="f-astart" type="date" value={v.astart} onChange={set('astart')} />
-        </div>
-        <div className="field">
-          <label htmlFor="f-adue">{t('fAdue')}</label>
-          <input id="f-adue" type="date" value={v.adue} onChange={set('adue')} />
-        </div>
+        <DateField id="f-astart" label={t('fAstart')} value={v.astart} onChange={(x) => setValue('astart', x)} />
+        <DateField id="f-adue" label={t('fAdue')} value={v.adue} onChange={(x) => setValue('adue', x)} />
       </div>
       <span className="hint">{t('fAdueHint')}</span>
       <p className="err" role="alert">

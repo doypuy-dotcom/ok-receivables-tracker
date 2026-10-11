@@ -139,3 +139,37 @@ export function loadErrorKey(error) {
   if (error?.code === '42501' || error?.code === 'PGRST301' || /permission denied/i.test(msg)) return 'ePermission'
   return 'eLoad'
 }
+
+// ---------------------------------------------------------------------------
+// ช่องวันที่ของแอปเอง (V1 รอบ ก) — ดู src/components/DateField.jsx
+// ---------------------------------------------------------------------------
+
+const monthNameCache = {}
+
+// ชื่อเดือนแบบเต็มของภาษานั้น ["มกราคม", …] / ["January", …] — ใช้ในช่องเลือกเดือน
+export function monthNames(lang) {
+  if (!monthNameCache[lang]) {
+    const f = new Intl.DateTimeFormat(LOCALE[lang], { timeZone: 'UTC', month: 'long' })
+    monthNameCache[lang] = Array.from({ length: 12 }, (_, i) => f.format(Date.UTC(2026, i, 1)))
+  }
+  return monthNameCache[lang]
+}
+
+// ป้ายปีในช่องเลือก: ไทยเป็น พ.ศ. (ค.ศ. + 543) อังกฤษเป็น ค.ศ.
+// ค่าที่เก็บในฟอร์มและส่ง database เป็น ค.ศ. เสมอ — พ.ศ. มีแต่ตอนแสดงผล
+export function yearLabel(lang, year) {
+  return String(lang === 'th' ? Number(year) + 543 : Number(year))
+}
+
+// จำนวนวันของเดือน (ปี ค.ศ., เดือน 1–12) — ใช้ตรวจว่าวันที่ที่เลือกมีจริง (31 ก.พ. ไม่มี)
+export function daysInMonth(year, month) {
+  return new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate()
+}
+
+// ชื่อวันในสัปดาห์แบบเต็มของวันที่นั้น ("ศุกร์" / "Friday")
+// ภาษาไทย Intl คืน "วันศุกร์" → ตัด "วัน" หน้าออก เพราะบรรทัดใต้ช่องเขียนว่า "ศุกร์ 9 ตุลาคม 2569"
+export function weekdayName(lang, iso) {
+  if (!iso) return ''
+  const name = new Intl.DateTimeFormat(LOCALE[lang], { timeZone: 'UTC', weekday: 'long' }).format(utc(iso))
+  return lang === 'th' ? name.replace(/^วัน/, '') : name
+}

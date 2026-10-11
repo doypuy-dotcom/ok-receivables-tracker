@@ -7,6 +7,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth.js'
 import CompaniesDialog from '../components/CompaniesDialog.jsx'
 import MonthFilter from '../components/MonthFilter.jsx'
+import PaymentForm from '../components/PaymentForm.jsx'
 import ReceivableCard from '../components/ReceivableCard.jsx'
 import ReceivableForm from '../components/ReceivableForm.jsx'
 import SummaryDialog from '../components/SummaryDialog.jsx'
@@ -47,6 +48,9 @@ export default function ReceivablesPage() {
   const [summaryRow, setSummaryRow] = useState(null)
   // ฟอร์มที่เปิดอยู่: null | 'rec' (เพิ่มยอดค้าง) | 'companies'
   const [dialog, setDialog] = useState(null)
+  // การ์ดที่กดปุ่ม "เพิ่มการจ่าย" บนหน้าตาราง (V1 รอบ ก) — ฟอร์มเดียวกับในหน้ารายละเอียด
+  // เก็บแค่ id แล้วหาแถวจากข้อมูลล่าสุด: Realtime โหลดใหม่ตอนกล่องเปิดอยู่ → ยอดคงเหลือในฟอร์มตามจริง
+  const [payId, setPayId] = useState(null)
   const isSales = profile.role === 'sales'
 
   const thisMonth = useMemo(() => currentMonthBangkok(), [])
@@ -84,6 +88,11 @@ export default function ReceivablesPage() {
     reload(msg)
   }
 
+  const afterPayWrite = (msg) => {
+    setPayId(null)
+    reload(msg)
+  }
+
   const setFilter = (nextMonths, nextUnpaid) => {
     const p = new URLSearchParams(params)
     p.set('m', nextMonths.size === 0 ? 'all' : [...nextMonths].sort().join(','))
@@ -111,6 +120,13 @@ export default function ReceivablesPage() {
   }, [state.rows, months, unpaidOnly, thisMonth])
 
   const openCard = (row) => navigate(`/r/${row.id}`, { state: { from: location.search } })
+
+  // ปุ่ม "เพิ่มการจ่าย" บนการ์ด: เฉพาะฝ่ายขาย และเฉพาะการ์ดที่ยังค้าง (จ่ายครบแล้วไม่มีอะไรให้บันทึก)
+  // undefined → การ์ดไม่แสดงปุ่มเลย (สิทธิ์จริงยังบังคับด้วย RLS)
+  const addPay = isSales ? (row) => !row.is_paid && setPayId(row.id) : undefined
+
+  // การ์ดถูกยกเลิกหรือจ่ายครบโดยคนอื่นระหว่างกล่องเปิดอยู่ → ไม่มีแถว กล่องปิดไปเอง
+  const payRow = payId ? state.rows.find((r) => r.id === payId) : null
 
   return (
     <>
@@ -187,7 +203,7 @@ export default function ReceivablesPage() {
                     <div className="carry-note">
                       {t('carryNote', { m: fmtMonth(lang, row.due_month, true), a: money(row.balance) })}
                     </div>
-                    <ReceivableCard row={row} onOpen={openCard} onSummary={setSummaryRow} />
+                    <ReceivableCard row={row} onOpen={openCard} onSummary={setSummaryRow} onAddPay={addPay} />
                   </div>
                 ))}
               </div>
@@ -198,7 +214,13 @@ export default function ReceivablesPage() {
           {view.rest.length ? (
             <div className="grid">
               {view.rest.map((row) => (
-                <ReceivableCard key={row.id} row={row} onOpen={openCard} onSummary={setSummaryRow} />
+                <ReceivableCard
+                  key={row.id}
+                  row={row}
+                  onOpen={openCard}
+                  onSummary={setSummaryRow}
+                  onAddPay={addPay}
+                />
               ))}
             </div>
           ) : (
@@ -216,6 +238,17 @@ export default function ReceivablesPage() {
       )}
 
       {summaryRow && <SummaryDialog row={summaryRow} onClose={() => setSummaryRow(null)} />}
+
+      {/* เพิ่มการจ่ายจากหน้าตารางได้เลย ไม่ต้องเข้าหน้ารายละเอียด (V1 รอบ ก) */}
+      {isSales && payRow && (
+        <PaymentForm
+          row={payRow}
+          payment={null}
+          onClose={() => setPayId(null)}
+          onSaved={afterPayWrite}
+          onCancelled={afterPayWrite}
+        />
+      )}
 
       {isSales && dialog === 'rec' && (
         <ReceivableForm row={null} onClose={() => setDialog(null)} onSaved={afterWrite} onCancelled={afterWrite} />

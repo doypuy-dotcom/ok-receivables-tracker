@@ -1151,3 +1151,147 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   V1 รอบ ก
+   --------------------------------------------------------------------------- */
+
+/* ช่องวันที่ของแอปเอง: พิมพ์ วว/ดด/ปปปป + ไอคอนปฏิทิน (เลิกใช้ของเบราว์เซอร์ที่เป็น เดือน/วัน/ปี อังกฤษ) */
+.dbox {
+  position: relative;
+  display: flex;
+}
+.dbox input {
+  flex: 1;
+  min-width: 0;
+  /* เว้นที่ให้ปุ่มปฏิทินที่ทับอยู่ขวาสุดของช่อง */
+  padding-right: 42px;
+}
+.dcal {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 40px;
+  border: 0;
+  background: transparent;
+  border-radius: 0 8px 8px 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.dcal:hover {
+  color: var(--primary);
+  background: var(--surface-2);
+}
+/* บรรทัดใต้ช่อง: วันที่ที่ระบบเข้าใจเป็นคำเต็ม หรือข้อความเตือนเมื่อวันที่ใช้ไม่ได้ */
+.dnote {
+  font-size: 12.5px;
+  color: var(--muted);
+  min-height: 1.25em;
+}
+.dnote.bad {
+  color: var(--red);
+  font-weight: 600;
+}
+/* ช่องวันที่กินความกว้างทั้งแถวแม้บนคอม เพื่อให้ปฏิทินที่เปิดใต้ช่องไม่ล้นกล่อง */
+.row2:has(.dfield.has-day) {
+  grid-template-columns: 1fr;
+}
+
+/* ปฏิทินของแอปเอง (ไม่ใช้ไลบรารี) — เปิดใต้ช่อง ปิดด้วย Esc หรือคลิกนอกกล่อง */
+.cal {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+}
+.cal-h {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.cal-t {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+}
+.cal-nav {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.cal-nav:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-wd {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  padding-bottom: 2px;
+}
+.cal-m {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.cal-d {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cal-m .cal-d {
+  font-size: 13px;
+  padding: 9px 2px;
+}
+.cal-d:hover {
+  background: var(--surface-2);
+}
+/* วันนี้ = เส้นขอบ · วันที่เลือกอยู่ = พื้นทึบ */
+.cal-d.today {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.cal-d.sel {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+/* ปุ่ม "เพิ่มการจ่าย" บนการ์ดในหน้าตาราง (ฝ่ายขาย, การ์ดที่ยังค้าง) */
+.card-cta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.card-cta .btn {
+  align-self: center;
+  padding: 5px 10px;
+}

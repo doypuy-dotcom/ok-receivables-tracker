@@ -8,7 +8,8 @@ function cardStatusClass(row) {
   return row.days_to_actual_due < 0 ? 's-over' : 's-open'
 }
 
-export default function ReceivableCard({ row, onOpen, onSummary }) {
+// onAddPay: ฝ่ายขายเท่านั้น และการ์ดที่ยังค้างเท่านั้น (ไม่ส่งมาก็ไม่มีปุ่ม) — V1 รอบ ก
+export default function ReceivableCard({ row, onOpen, onSummary, onAddPay }) {
   const { t, lang } = useLang()
 
   const onKeyDown = (e) => {
@@ -69,7 +70,23 @@ export default function ReceivableCard({ row, onOpen, onSummary }) {
               <div className="amount num">{money(row.balance)}</div>
               <div className="unit">{t('baht')}</div>
             </div>
-            <span className="link">{t('viewDetail')}</span>
+            <div className="card-cta">
+              <span className="link">{t('viewDetail')}</span>
+              {/* กดปุ่มนี้ต้องไม่เปิดหน้ารายละเอียดไปด้วย → stopPropagation
+                  (ปุ่มเป็น <button> ซ้อนในการ์ด onKeyDown ของการ์ดจึงไม่ทำงานตอนกด Enter ที่ปุ่ม) */}
+              {onAddPay && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAddPay(row)
+                  }}
+                >
+                  + {t('addPay')}
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <span className="status-tag">{t('status')}</span>

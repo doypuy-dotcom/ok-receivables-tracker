@@ -8,6 +8,7 @@ import { useDesktopFocus } from '../lib/focus.js'
 import { addMoney, cmpMoney, isMoneyText, money, nowTimeBangkok, todayBangkok } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
 import CancelButton from './CancelButton.jsx'
+import DateField from './DateField.jsx'
 import Dialog from './Dialog.jsx'
 
 function initialValues(payment) {
@@ -32,10 +33,13 @@ export default function PaymentForm({ row, payment, onClose, onSaved, onCancelle
   // ยอดที่ยังบันทึกได้ = ยอดคงเหลือ + ยอดเดิมของรายการที่กำลังแก้ (คิดด้วยสตางค์แบบ BigInt ไม่ใช้ float)
   const room = payment ? addMoney(row.balance, payment.amount) : row.balance
 
-  const set = (key) => (e) => {
-    setV((prev) => ({ ...prev, [key]: e.target.value }))
+  // ช่องวันที่ของแอป (DateField) ส่งค่าเป็น string ส่วนช่องอื่นส่ง event มา
+  const setValue = (key, value) => {
+    setV((prev) => ({ ...prev, [key]: value }))
     setErr('')
   }
+
+  const set = (key) => (e) => setValue(key, e.target.value)
 
   const submit = async () => {
     if (busy) return
@@ -156,10 +160,13 @@ export default function PaymentForm({ row, payment, onClose, onSaved, onCancelle
         </div>
       </div>
       <div className="row2">
-        <div className="field">
-          <label htmlFor="f-date">{v.method === 'cheque' ? t('fDateC') : t('fDateT')}</label>
-          <input id="f-date" type="date" value={v.date} onChange={set('date')} />
-        </div>
+        {/* ช่องของแอปเอง: พิมพ์ วว/ดด/ปปปป (ปี พ.ศ.) + ปฏิทิน — ป้ายยังเปลี่ยนตามวิธีจ่ายเหมือนเดิม */}
+        <DateField
+          id="f-date"
+          label={v.method === 'cheque' ? t('fDateC') : t('fDateT')}
+          value={v.date}
+          onChange={(x) => setValue('date', x)}
+        />
         <div className="field">
           <label htmlFor="f-time">{t('fTime')}</label>
           <input id="f-time" type="time" value={v.time} onChange={set('time')} />

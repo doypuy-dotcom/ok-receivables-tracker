@@ -28,6 +28,31 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
 
 ## Hard rules — UI
 - `docs/ui-reference.html` is the approved UI. Match its layout, colors, texts and Thai/English labels.
+- **ui-reference.html is frozen at V0.1. Never edit it** — it is the record of what the customer approved.
+  When the app changes because of customer feedback, the change is written up in `docs/progress.md`
+  (which feedback item, what was decided, why) and **progress.md wins over ui-reference from then on**.
+  Before matching ui-reference, read progress.md for a later decision about that screen.
+  Any place where the app no longer matches ui-reference must be listed in progress.md.
+- **Dates: every date and month field in the app uses `DateField` / `MonthField`
+  (`src/components/DateField.jsx`). NEVER use `input type="date"` or `type="month"` anywhere in `src/`.**
+  Reason (feedback round 1, 9 Oct): the browser's own fields are month/day/year with English month
+  names, and sales entered wrong dates. The app cannot control either, so it owns both fields.
+  The shape of these fields is settled; do not redesign them without asking:
+  - **One text input the user can type in, plus a calendar icon** — the customer rejected a
+    3-dropdown version on 11 Oct (see progress.md "V1 รอบ ก" item 1ก). Typing must stay possible.
+  - Order is **`dd/mm/yyyy`** (`mm/yyyy` for the account month) in BOTH languages. Digits only;
+    the app inserts the `/` itself. Backspace over an inserted `/` must still delete a digit.
+  - A **4-digit year >= 2400 is B.E.** (minus 543), below that is C.E. Accepted range after
+    conversion: C.E. 1900–2200.
+  - Month names (calendar + the line under the field) follow the language: Thai month names and
+    year B.E. in Thai, English month names and year C.E. in English. Weekday headers start Sunday.
+  - The calendar is **the app's own**, no date library and no browser `showPicker()`. It closes on
+    Esc (without closing the surrounding dialog) and on a click outside.
+  - The line under the field shows the date the app understood, in full words
+    ("ศุกร์ 9 ตุลาคม 2569"), or a warning when the text is incomplete or impossible.
+  - The value in and out of these fields is always ISO C.E. (`YYYY-MM-DD` / `YYYY-MM`) — B.E. is a
+    label only, so **always convert to C.E. before sending to the database**, and reject dates that
+    do not exist (31 Feb) by emitting an empty value so the form cannot save.
 - Mobile-first. Must work on iPhone Safari and Android Chrome.
 - NEVER use `window.alert`, `window.confirm` or `window.prompt` (blocked in some PWA and embedded contexts).
   Use in-app dialogs. Destructive actions use the two-step confirm pattern from ui-reference.
