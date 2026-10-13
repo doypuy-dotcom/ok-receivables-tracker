@@ -34,6 +34,15 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
   The app only formats numbers. Never compute balances with JavaScript floats.
 - "Today" is Thai time: `(now() at time zone 'Asia/Bangkok')::date`. Never use plain `current_date`.
 - Never seed or copy the demo data from `docs/ui-reference.html` into the database or the app.
+- **Demos always use a test account — never the customer's real owner / sales account.**
+  This applies to every demo: class presentations, screen recordings, showing a feature to
+  anyone. Reason (7 Oct, written up in progress.md "ผลสัปดาห์แรก" item 3): a demo done with
+  the real sales account left 2 companies, 2 cards and 2 payments inside the customer's real
+  data. Cards and companies can be cancelled, but the `audit_logs` rows **can never be
+  removed**, and in `receivable_notes` / `app_feedback` (append-only) nothing can be removed
+  at all. Every report already excludes test data (`display_name` containing "ทดสอบ" and
+  companies named `[TEST]%`), so a demo on a real account is the one way non-customer rows
+  reach the success-criteria numbers. Create demo companies with the `[TEST]` prefix too.
 
 ## Hard rules — UI
 - `docs/ui-reference.html` is the approved UI. Match its layout, colors, texts and Thai/English labels.
