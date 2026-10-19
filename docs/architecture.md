@@ -39,8 +39,19 @@
 | Backend | Supabase (PostgreSQL + Auth + RLS + Realtime) | SQL ตรงกับ schema.md, มี login และระบบสิทธิ์ในตัว, ใช้ฟรีได้ |
 | Hosting | Vercel | HTTPS อัตโนมัติ, deploy ทุกครั้งที่ push, ทีมเคยใช้แล้ว |
 | PWA | vite-plugin-pwa | สร้าง manifest และ service worker ให้ ไม่ต้องเขียนเอง |
-| ส่งออก JPG / PDF | html-to-image → JPG, jsPDF ใส่รูปนั้น → PDF | ทำในเบราว์เซอร์ ไม่ต้องมีเซิร์ฟเวอร์, แปลงเป็นรูปก่อนทำให้ภาษาไทยไม่เพี้ยนใน PDF |
+| ส่งออก JPG / PDF | `html-to-image` 1.11 → JPG, `jspdf` 4.2 ใส่รูปนั้น → PDF | ทำในเบราว์เซอร์ ไม่ต้องมีเซิร์ฟเวอร์, แปลงเป็นรูปก่อนทำให้ภาษาไทยไม่เพี้ยนใน PDF |
 | ฟอนต์ | Anuphan (Google Fonts) | อ่านภาษาไทยชัด ตรงกับ ui-reference |
+
+- **2 ไลบรารีของการส่งออกถูกโหลดตอนกดปุ่มเท่านั้น** (`await import()` ใน `src/lib/exportSheet.js`)
+  รวมกันเกือบ 600 KB (jspdf + html2canvas ที่มันพาไป) ซึ่งใหญ่กว่าตัวแอปทั้งตัว
+  ถ้า import ตรง ๆ ทุกคนจะต้องโหลดทั้งที่ส่วนใหญ่เปิดแอปมาดูยอด ไม่ได้ส่งออกไฟล์
+  → `npm run build` แยกเป็น chunk ของตัวเอง หน้าอื่นไม่แบกน้ำหนักนี้
+- **ภาษาไทยในไฟล์ที่ส่งออก:** รอ `document.fonts.ready` → ฝัง `@font-face` ของ Anuphan เป็น
+  data URI ลงในรูป (`getFontEmbedCSS`) → ถ่ายทิ้งรอบแรกก่อน 1 ครั้ง (ข้อจำกัดของ html-to-image
+  บน iOS Safari ที่รูปแรกมักออกมาก่อนฟอนต์เข้าที่) · ไม่มีสัญญาณ = ไม่ปล่อยไฟล์ เพราะฟอนต์จะผิด
+- **ขนาดกระดาษในไฟล์มาจาก DOM จริง** 794 × 1123 px (A4 ที่ 96dpi) ถ่ายที่ `pixelRatio: 2` ≈ 192dpi
+  **ไม่มี layout ที่สองสำหรับไฟล์** (AGENTS.md) มือถือย่อด้วย `transform: scale()` ที่กล่องนอก
+  ตัวกระดาษยังกว้าง 794px เสมอ จึงได้ไฟล์ขนาดเดียวกันทุกเครื่อง
 
 ## 3. การไหลของข้อมูล
 
@@ -48,6 +59,13 @@
 1. แอปเรียก `receivable_summary` ผ่าน supabase-js พร้อม session ของผู้ใช้
 2. RLS ตรวจว่าผู้ใช้ล็อกอินและ `is_active` → ส่งข้อมูลกลับ
 3. ค่าคำนวณทั้งหมด (ยอดคงเหลือ, % แถบ, เลยกำหนด, ค้างข้ามเดือน) มาจาก view แอปแค่แสดงผล
+
+**อ่าน (เปิดหน้าสรุปรายเดือน — V2)**
+1. แอปเรียก 3 view ของ `006` พร้อมกัน: `monthly_report`, `monthly_report_total`, `report_asof`
+   (schema.md ข้อ 4.3) — ยอดเงินอ่านเป็น `::text` เหมือนที่อื่น เพื่อไม่ให้ JSON แปลงเป็น float
+2. RLS ของ `receivable_summary` ที่อยู่ข้างใต้ยังบังคับเหมือนเดิม (view ใช้ `security_invoker`)
+3. แอป**กรองแถวตามเดือนที่เลือกและจัดรูปแบบเท่านั้น** ยอดรวม ลำดับ และวันที่ "ดู ณ"
+   มาจาก database ทั้งหมด **ห้ามบวกหรือเทียบเงินใน JavaScript** (AGENTS.md)
 
 **เขียน (ฝ่ายขายบันทึกการจ่าย)**
 1. แอปตรวจข้อมูลในฟอร์ม (ช่องว่าง, ยอดเกินคงเหลือ)
@@ -114,7 +132,9 @@
   supabase-js ส่ง JWT ของผู้ใช้ให้ Realtime เองตอน `INITIAL_SESSION` / `SIGNED_IN` / `TOKEN_REFRESHED`
 - ไม่ตั้ง `replica identity full` (ส่งแค่แถวใหม่) และไม่มี DELETE ในระบบนี้
   จึงไม่ติดข้อจำกัดที่ event ของ DELETE ไม่ผ่าน RLS
-- โค้ดอยู่ที่ `src/lib/live.js` (`useLiveReload`) — หน้าตารางและหน้ารายละเอียดใช้ตัวเดียวกัน
+- โค้ดอยู่ที่ `src/lib/live.js` (`useLiveReload`) — หน้าตาราง หน้ารายละเอียด และ
+  **หน้าสรุปรายเดือน (V2)** ใช้ตัวเดียวกัน · หน้าสรุปรายเดือนโหลดใหม่ทั้ง 3 view รวม `report_asof`
+  จึงได้ทั้งตัวเลขใหม่และเวลา "ดู ณ" ใหม่ (ลูกค้าสั่งว่ารายงานต้องเป็นข้อมูลล่าสุดเสมอ — prd.md ข้อ 6.1)
 - **การ์ดที่เปิดดูอยู่ถูกยกเลิกโดยคนอื่น:** โหลดใหม่แล้วไม่พบใน `receivable_summary`
   → แสดงข้อความแล้วพากลับหน้าตาราง (ตัวกรองเดิม)
 - โหลดใหม่ไม่สำเร็จเพราะไม่มีสัญญาณ → แสดงข้อความ "ไม่มีสัญญาณ" + ปุ่มลองอีกครั้ง **แทนตัวเลขเก่า** (เหมือนข้อ 8)
@@ -122,7 +142,7 @@
 
 ## 7.1 เลขเวอร์ชันของแอป
 
-- `src/lib/version.js` export `APP_VERSION` — **ที่เดียวในโปรเจกต์** (ตอนนี้ `V1`) เปลี่ยนที่นี่ตอนออก V2
+- `src/lib/version.js` export `APP_VERSION` — **ที่เดียวในโปรเจกต์** (ตอนนี้ `V2`) เปลี่ยนที่นี่ทุกครั้งที่ส่งมอบเวอร์ชันใหม่
   ค่านี้ถูกแนบไปกับทุกแถวของ `app_feedback` ด้วย (prd.md ข้อ 11) เพื่อเทียบผลแต่ละเวอร์ชัน
 - แสดงท้าย `main` ทุกหน้า และท้ายกล่อง login (class `.app-ver`)
   เพื่อให้ลูกค้าบอกได้ว่ากำลังใช้เวอร์ชันไหนตอนแจ้ง feedback
@@ -172,7 +192,7 @@ ok-receivables/
 ├── docs/                     prd, schema, architecture, implementation-plan, progress, ui-reference
 ├── supabase/
 │   ├── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
-│   ├── tests/                m1_checks.sql … v1_checks.sql (ตรวจ RLS / กฎ แบบ PASS/FAIL)
+│   ├── tests/                m1_checks.sql … v2_checks.sql (ตรวจ RLS / กฎ แบบ PASS/FAIL)
 │   ├── queries/              feedback_report.sql (สรุป feedback แยกตามเวอร์ชัน × role — อ่านอย่างเดียว)
 │   └── seed/                 test_data.sql (ข้อมูล [TEST]), cleanup_test_data.sql (ยกเลิก/ปิด [TEST])
 ├── vercel.json               rewrite ทุก path → index.html (react-router)
@@ -191,21 +211,27 @@ ok-receivables/
     │   ├── history.js        เลือก/จัดรายการประวัติการแก้ไข
     │   ├── toast.js          ข้อความแจ้งผลการบันทึก (แทน window.alert)
     │   ├── live.js           Realtime: subscribe แล้วโหลดใหม่ (รวบ event + ตอนกลับมาที่แอป/เน็ตกลับมา)
-    │   ├── version.js        APP_VERSION ("V1") — ที่เดียวในโปรเจกต์
+    │   ├── version.js        APP_VERSION ("V2") — ที่เดียวในโปรเจกต์
+    │   ├── exportSheet.js    ถ่าย .sheet เป็น JPG / PDF (โหลดไลบรารีตอนกดปุ่ม)
+    │   ├── fitText.js        ย่อตัวอักษรของเซลล์ให้ชื่อบริษัทแสดงครบในรายงาน
     │   ├── focus.js          โฟกัสช่องแรกบนเครื่องที่มีเมาส์
     │   └── i18n.js           ข้อความไทย/อังกฤษ
     ├── auth/                 หน้า login, ตัวจัดการ session/role
-    ├── pages/                ReceivablesPage, ReceivableDetailPage, LoginPage
+    ├── pages/                ReceivablesPage, ReceivableDetailPage, MonthlyReportPage, LoginPage
     ├── components/           Card, StatusBars, MonthFilter, EditHistory, Dialog,
     │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton,
     │                         DateField (ช่องวันที่ของแอป), NotesPanel (หมายเหตุบนการ์ด),
-    │                         FeedbackDialog (ส่งความคิดเห็น), UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่")
+    │                         FeedbackDialog (ส่งความคิดเห็น), UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่"),
+    │                         ReportSheet (กระดาษ A4 ของหน้าสรุปรายเดือน = DOM ที่ถูกถ่ายเป็นไฟล์)
     └── index.css             tokens สีและ CSS จาก ui-reference
 ```
 
 - ฟอร์มทุกตัวเป็น dialog ในแอป (`Dialog.jsx`) ไม่มี `window.alert / confirm / prompt`
   การยกเลิก (soft delete) ใช้ `CancelButton` แบบยืนยัน 2 ขั้นตาม ui-reference
 - ปุ่มเพิ่ม/แก้ไขแสดงเฉพาะ `role = sales` — เป็นเรื่องหน้าจอเท่านั้น สิทธิ์จริงอยู่ที่ RLS
+- **เมนู 2 หน้าใต้ส่วนหัว** (`SubNav` ใน `App.jsx`): "ตารางยอดค้าง" (`/`, รวม `/r/:id`)
+  และ "สรุปรายเดือน" (`/report`) — ทั้งเจ้าของและฝ่ายขายเข้าได้ทั้ง 2 หน้า
+  หน้าสรุปรายเดือนอ่านอย่างเดียวสำหรับทุกคน (ชั้น database ให้แต่สิทธิ์ `select` — schema.md ข้อ 4.3)
 - `"ข้อมูล ณ"` = `max(audit_logs.created_at)` (ครอบคลุมทุกการเพิ่ม/แก้/ยกเลิก รวมการ์ดที่ถูกยกเลิก
   ซึ่งหายไปจาก `receivable_summary`)
 

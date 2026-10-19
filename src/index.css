@@ -1376,3 +1376,195 @@ dialog::backdrop {
   font-variant-numeric: tabular-nums;
   padding: 9px 4px;
 }
+
+/* ---------------------------------------------------------------------------
+   V2 — เมนูหน้าจอ + หน้าสรุปรายเดือน (กระดาษ A4 ที่ถูกถ่ายเป็นไฟล์)
+   --------------------------------------------------------------------------- */
+
+/* เมนู 2 หน้า: ตารางยอดค้าง / สรุปรายเดือน (ทั้ง owner และ sales) */
+.subnav {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+  flex-wrap: wrap;
+}
+.subnav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+}
+.subnav-link:hover {
+  border-color: var(--primary);
+}
+.subnav-link.on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+.export-hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* กล่องที่ย่อกระดาษให้พอดีความกว้างจอ (มือถือ) — ความสูงถูกตั้งจาก JS = ความสูงจริง × scale
+   .sheet เองยังกว้าง 794px เสมอ จึงส่งออกได้ขนาดจริงไม่ว่าดูบนเครื่องไหน */
+.sheet-wrap {
+  margin-top: 16px;
+}
+.sheet-box {
+  width: 100%;
+  overflow: hidden;
+}
+.sheet-stack {
+  display: grid;
+  transform-origin: top left;
+}
+
+/* กระดาษ A4 แนวตั้งที่ 96dpi = 794 × 1123 px
+   สีคงที่ขาว-ดำ ไม่ตามโหมดมืดของเครื่อง เพราะแผ่นนี้คือสิ่งที่พิมพ์ลงกระดาษ
+   ความสูงของหัวรายงาน / หัวตาราง / แถว / ยอดรวม / ท้ายกระดาษ
+   **ต้องตรงกับค่าคงที่ใน src/components/ReportSheet.jsx** (ใช้คำนวณการแบ่งหน้า) */
+.sheet {
+  width: 794px;
+  height: 1123px;
+  padding: 45px;
+  overflow: hidden;
+  background: #ffffff;
+  color: #17242c;
+  color-scheme: light;
+  border: 1px solid #d5dce0;
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+.sheet-in {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.rep-head {
+  height: 56px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid #17242c;
+}
+.rep-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.rep-head p {
+  margin: 0;
+  font-size: 12.5px;
+  color: #5a6971;
+  text-align: right;
+}
+
+/* ตารางของรายงาน: table-layout คงที่ + ไม่ตัดบรรทัด → ทุกแถวสูง 30px เท่ากันเสมอ
+   ความกว้างของแต่ละคอลัมน์มาจาก COLS ใน ReportSheet.jsx (รวม 704px)
+   ชื่อบริษัทห้ามถูกตัดหาย เพราะรายงานใช้พิมพ์: ยาวเกินช่องให้ย่อขนาดตัวอักษรของเซลล์นั้น
+   (lib/fitText.js — ต่ำสุด 10px) แล้วค่อยขึ้น 2 บรรทัดเล็ก ๆ ในแถวเดิม
+   ellipsis เหลือไว้เป็นทางสุดท้ายเฉพาะคลาส .cut เท่านั้น */
+.rep {
+  width: 704px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+.rep th,
+.rep td {
+  border: 1px solid #d5dce0;
+  padding: 0 6px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+/* หัวคอลัมน์ต้องอ่านได้เต็มคำ: ขึ้นบรรทัดใหม่ได้ (สูงพอ 3 บรรทัด) และคำที่ไม่มีช่องว่างให้ตัด
+   เช่น "วันที่รับเงินจริง" ถูกย่อขนาดตัวอักษรลงจนพอดีจาก fitHeaderPx
+   ความสูง 48px ต้องตรงกับ H_THEAD ใน ReportSheet.jsx */
+.rep thead th {
+  height: 48px;
+  background: #f2f5f4;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: normal;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+.rep tbody td {
+  height: 30px;
+}
+.rep tfoot td {
+  height: 34px;
+  font-weight: 700;
+  background: #f7f9f9;
+}
+.rep .c-num {
+  text-align: right;
+}
+.rep thead .c-num {
+  text-align: right;
+}
+.rep .c-name {
+  text-align: left;
+}
+/* ชื่อยาวมากจนย่อถึง 10px แล้วบรรทัดเดียวยังไม่พอ → แสดง 2 บรรทัดเล็ก ๆ
+   2 × line-height 13px = 26px ยังอยู่ในแถวสูง 30px เดิม (td จัดกลางแนวตั้งเอง)
+   **ความสูงแถวไม่เปลี่ยน การแบ่งหน้าจึงไม่ขึ้นกับความยาวของชื่อ** (ต้องตรงกับ NAME2_PX ใน ReportSheet.jsx) */
+.rep .c-name .two {
+  display: block;
+  line-height: 13px;
+}
+.rep .c-name .two > span {
+  display: block;
+  overflow: hidden;
+}
+/* กรณีสุดท้ายจริง ๆ: ยาวเกินกว่า 2 บรรทัดที่ 10px จะรับได้ (ราว 115 ตัวอักษรไทย)
+   ใส่ … ให้คนอ่านรู้ว่ายังมีต่อ — ห้ามตัดหายเฉย ๆ โดยไม่มีอะไรบอก */
+.rep .c-name .two > span.cut,
+.rep-carry p.cut {
+  text-overflow: ellipsis;
+}
+.rep-empty {
+  height: 30px;
+  color: #5a6971;
+  text-align: center;
+}
+
+/* บล็อก "ยอดค้างข้ามเดือน" ใต้ตาราง (การ์ดที่ครบกำหนดก่อนเดือนที่เลือกและยังค้าง) */
+.rep-carry h3 {
+  margin: 14px 0 4px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+/* บรรทัดยอดค้างก็มีชื่อบริษัท ย่อขนาดตัวอักษรให้พอดีเหมือนในตาราง (ไม่ตัดด้วย …) */
+.rep-carry p {
+  margin: 0;
+  height: 22px;
+  line-height: 22px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.sheet-foot {
+  margin-top: auto;
+  height: 20px;
+  line-height: 20px;
+  font-size: 11.5px;
+  color: #5a6971;
+  text-align: right;
+}

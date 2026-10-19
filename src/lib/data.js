@@ -171,3 +171,39 @@ export const FEEDBACK_ISSUES_MAX_LEN = 2000
 export function insertFeedback(values) {
   return supabase.from('app_feedback').insert(values).select('id').single()
 }
+
+// ---------------------------------------------------------------------------
+// หน้าสรุปรายเดือน (V2 — schema.md 4.3, migration 006)
+// อ่านอย่างเดียว ทั้ง owner และ sales · **ยอดเงินทุกตัวรวมยอดรวมมาจาก view**
+// แอปแค่กรองแถวตาม due_month และจัดรูปแบบตัวเลข (ห้ามบวก/เทียบเงินเอง — AGENTS.md)
+// โหลดทุกเดือนครั้งเดียวเหมือนหน้าตาราง: บล็อก "ยอดค้างข้ามเดือน" ต้องใช้แถวของเดือนก่อน ๆ ด้วย
+// ---------------------------------------------------------------------------
+
+const REPORT_COLUMNS = [
+  'due_month',
+  'seq',
+  'receivable_id',
+  'company_name',
+  'credit_days',
+  'account_month',
+  'total_amount::text',
+  'balance::text',
+  'is_paid',
+  'actual_due_date',
+].join(',')
+
+export function fetchReportRows() {
+  return supabase.from('monthly_report').select(REPORT_COLUMNS).order('due_month').order('seq')
+}
+
+// แถว "ยอดรวม" ท้ายตาราง 1 แถวต่อ 1 เดือน (เดือนที่ไม่มีการ์ดจะไม่มีแถว → หน้าจอแสดงสถานะว่าง)
+export function fetchReportTotals() {
+  return supabase
+    .from('monthly_report_total')
+    .select('due_month,card_count,total_amount_sum::text,balance_sum::text')
+}
+
+// "วันนี้" + เวลาที่ดู ตามเวลาไทยจาก database (ไม่ใช่นาฬิกาเครื่อง ซึ่งตั้งเพี้ยนได้)
+export function fetchReportAsOf() {
+  return supabase.from('report_asof').select('today,viewed_at').maybeSingle()
+}

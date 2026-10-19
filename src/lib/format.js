@@ -80,6 +80,22 @@ export function fmtMonth(lang, iso, long = false) {
   })
 }
 
+// "2026-10-09" → "09/10/2569" (ไทยเป็น พ.ศ.) / "09/10/2026" (อังกฤษเป็น ค.ศ.)
+// รูปแบบเดียวกับที่พิมพ์ใน DateField (วว/ดด/ปปปป) ใช้ในตารางสรุปรายเดือนและไฟล์ที่ส่งออก
+export function fmtDateNum(lang, iso) {
+  if (!iso) return '–'
+  const year = Number(iso.slice(0, 4)) + (lang === 'th' ? 543 : 0)
+  return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + year
+}
+
+// "2026-09-01" หรือ "2026-09" → "09/69" (ไทยเป็น พ.ศ. 2 หลักท้าย) / "09/26"
+// ใช้กับคอลัมน์ "บัญชีเดือน" และบรรทัดยอดค้างข้ามเดือนของรายงาน (ตกลงกับลูกค้า 19 ต.ค.)
+export function fmtMonthNum(lang, iso) {
+  if (!iso) return '–'
+  const year = Number(iso.slice(0, 4)) + (lang === 'th' ? 543 : 0)
+  return iso.slice(5, 7) + '/' + String(year).slice(-2)
+}
+
 // "13:30:00" → "13:30 น."
 export function fmtTime(lang, time) {
   if (!time) return ''
@@ -93,6 +109,16 @@ export function fmtStamp(lang, ts) {
   const date = d.toLocaleDateString(LOCALE[lang], { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric' })
   const time = d.toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return date + ' ' + time + (lang === 'th' ? ' น.' : '')
+}
+
+// timestamptz → { date: "2026-10-19", time: "21:15" } ตามเวลาไทย
+// ใช้กับหัวรายงาน "ดู ณ <วันที่> <เวลา> น. โดย <ชื่อผู้ใช้>" ที่ต้องแยกวันกับเวลาออกจากกัน
+// (เวลาที่ส่งเข้ามาคือ report_asof.viewed_at ของ database ไม่ใช่นาฬิกาเครื่อง)
+export function stampParts(ts) {
+  const d = ts ? new Date(ts) : new Date()
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  const time = d.toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return { date, time }
 }
 
 // เดือนปัจจุบันตามเวลาไทย "YYYY-MM-01" — ใช้เป็นค่าเริ่มต้นของตัวกรองเดือนเท่านั้น (ค่าคำนวณทั้งหมดใช้วันนี้จาก database)

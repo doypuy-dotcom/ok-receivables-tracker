@@ -32,6 +32,12 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
 - Database changes only through new files in `supabase/migrations/` (numbered, never edit one that has been run).
 - Money: `numeric(14,2)` in the database. All money and date calculations live in the `receivable_summary` view.
   The app only formats numbers. Never compute balances with JavaScript floats.
+- **Report numbers, including every total row, come from the database** — the monthly summary page reads
+  `monthly_report`, `monthly_report_total` and `report_asof` (migration `006`, schema.md 4.3) and must not
+  add, subtract or compare money in JavaScript. Filtering rows by `due_month` and formatting is all the app does.
+  The "carried over" block under the table uses `due_month < the selected month` and `not is_paid`
+  (never `is_carried_over`, which is tied to the *current* month and would duplicate a table row when an
+  earlier month is selected — that is why `006` leaves the column out).
 - "Today" is Thai time: `(now() at time zone 'Asia/Bangkok')::date`. Never use plain `current_date`.
 - Never seed or copy the demo data from `docs/ui-reference.html` into the database or the app.
 - **Demos always use a test account — never the customer's real owner / sales account.**
@@ -71,6 +77,11 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
   - The value in and out of these fields is always ISO C.E. (`YYYY-MM-DD` / `YYYY-MM`) — B.E. is a
     label only, so **always convert to C.E. before sending to the database**, and reject dates that
     do not exist (31 Feb) by emitting an empty value so the form cannot save.
+- **Exported files are a photo of the screen, not a second layout.** JPG and PDF are produced by
+  capturing the same `.sheet` DOM the user is looking at (`src/components/ReportSheet.jsx`), so what the
+  customer checks on screen is exactly what prints. Never build a separate print-only markup or a
+  server-side renderer. On phones the sheet is only scaled down with `transform: scale()` on its wrapper —
+  the sheet itself stays 794px wide (A4 at 96dpi) so the file is full size on every device.
 - Mobile-first. Must work on iPhone Safari and Android Chrome.
 - NEVER use `window.alert`, `window.confirm` or `window.prompt` (blocked in some PWA and embedded contexts).
   Use in-app dialogs. Destructive actions use the two-step confirm pattern from ui-reference.
