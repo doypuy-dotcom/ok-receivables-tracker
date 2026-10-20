@@ -27,7 +27,7 @@ import { useToast } from '../lib/toast.js'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const EMPTY = { row: null, payments: [], history: [], notes: [], userNames: {}, companyNames: {} }
+const EMPTY = { row: null, payments: [], history: [], notes: [], userNames: {}, userRoles: {}, companyNames: {} }
 
 async function loadDetail(id) {
   const [summary, payments, logs, notes] = await Promise.all([
@@ -57,12 +57,22 @@ async function loadDetail(id) {
   if (error2) return { error: error2 }
 
   const userNames = Object.fromEntries(profiles.data.map((p) => [p.id, p.display_name]))
+  // role ของคนเขียนหมายเหตุ: ใช้ติดป้าย "เจ้าของ / ฝ่ายขาย" (V2 ข้อ 2)
+  const userRoles = Object.fromEntries(profiles.data.map((p) => [p.id, p.role]))
   // เรียงเก่า → ใหม่ ชื่อล่าสุดของแต่ละบริษัทจึงทับชื่อเก่า
   const companyNames = Object.fromEntries(companyLogs.data.map((l) => [l.record_id, l.new_value?.name]))
   companyNames[summary.data.company_id] = summary.data.company_name
 
   return {
-    data: { row: summary.data, payments: payments.data, history, notes: notes.data, userNames, companyNames },
+    data: {
+      row: summary.data,
+      payments: payments.data,
+      history,
+      notes: notes.data,
+      userNames,
+      userRoles,
+      companyNames,
+    },
   }
 }
 
@@ -294,13 +304,17 @@ export default function ReceivableDetailPage() {
           )}
         </section>
 
-        {/* หมายเหตุ (V1 รอบ ข): เจ้าของอ่านได้ ฝ่ายขายเขียนได้ — แก้/ลบไม่ได้ทั้งคู่ (schema.md 3.6) */}
+        {/* หมายเหตุ: **เจ้าของและฝ่ายขายเขียนได้ทั้งคู่** (V2 ข้อ 2 — migration 007)
+            แก้/ลบไม่ได้ทั้งคู่ และยังเขียนในการ์ดที่ยกเลิกแล้วไม่ได้ (schema.md 3.6)
+            canWrite เป็นเรื่องหน้าจอเท่านั้น สิทธิ์จริงอยู่ที่ RLS */}
         <section className="panel-box notes-box">
           <NotesPanel
             receivableId={row.id}
             notes={state.notes}
             userNames={state.userNames}
-            canWrite={isSales}
+            userRoles={state.userRoles}
+            myRole={profile.role}
+            canWrite={Boolean(profile.role)}
             onSaved={afterNote}
           />
         </section>

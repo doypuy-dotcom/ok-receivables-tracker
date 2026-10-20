@@ -80,7 +80,8 @@ export function fetchCompanyNameLogs(companyIds) {
 }
 
 export function fetchProfiles(ids) {
-  return supabase.from('profiles').select('id,display_name').in('id', ids)
+  // role ใช้ติดป้าย "เจ้าของ / ฝ่ายขาย" ให้หมายเหตุแต่ละรายการ (V2 ข้อ 2 — migration 007)
+  return supabase.from('profiles').select('id,display_name,role').in('id', ids)
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,7 @@ export function cancelPayment(id) {
 // หมายเหตุบนการ์ด (V1 รอบ ข — schema.md 3.6)
 // ต่อท้ายอย่างเดียว: มีแต่ insert ไม่มี update / cancel / delete
 // created_by / created_at ใส่โดย trigger — แอปส่งแค่ receivable_id กับ body
+// **V2 ข้อ 2: เจ้าของเขียนได้ด้วย** (migration 007 — เดิมเขียนได้แค่ฝ่ายขาย) สิทธิ์จริงอยู่ที่ RLS
 // ---------------------------------------------------------------------------
 
 // ความยาวสูงสุดของหมายเหตุ = constraint receivable_notes_body_len ใน 005_notes_and_feedback.sql
@@ -151,8 +153,9 @@ export function fetchNotes(receivableId) {
 }
 
 // หมายเหตุล่าสุด 1 แถวต่อ 1 การ์ด สำหรับการ์ดในหน้าตาราง (schema.md 4.1)
+// created_by_role มาจาก view (007): หน้าตารางไม่ได้อ่าน profiles จึงไม่ต้องขอเพิ่มอีก 1 คำขอ
 export function fetchLatestNotes() {
-  return supabase.from('receivable_latest_note').select('receivable_id,body,created_at')
+  return supabase.from('receivable_latest_note').select('receivable_id,body,created_at,created_by_role')
 }
 
 export function insertNote(receivableId, body) {

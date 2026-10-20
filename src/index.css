@@ -1369,6 +1369,43 @@ dialog::backdrop {
   }
 }
 
+/* ป้ายว่าใครเขียนหมายเหตุ + หมายเหตุของเจ้าของให้เด่น (V2 ข้อ 2 — migration 007_owner_notes.sql)
+   ฝ่ายขายต้องเห็นจากหน้าตารางว่าเจ้าของฝากเรื่องไว้ ไม่ต้องเปิดการ์ดทุกใบ */
+.note-who {
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 6px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.note-who.owner {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.notes > li.from-owner {
+  background: var(--primary-soft);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  padding-left: 10px;
+}
+.card-note.from-owner {
+  border-top-color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 8px;
+  padding: 10px 10px 12px;
+  margin-bottom: 12px;
+}
+.card-note .note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+
 /* คะแนน 1–5 ของกล่องส่งความคิดเห็น — 5 ช่องเท่ากัน ตัวเลขอยู่กลาง */
 .seg-score label {
   flex: 1;

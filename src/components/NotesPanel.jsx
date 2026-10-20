@@ -1,18 +1,22 @@
 // ส่วน "หมายเหตุ" ในหน้ารายละเอียดการ์ด (V1 รอบ ข — prd.md ข้อ 5 รายการที่ 11, schema.md 3.6)
-// ทุกรายการ: ใครเขียน + เมื่อไหร่ + ข้อความ · ใหม่ → เก่า (เหมือนประวัติการแก้ไข)
-// ฝ่ายขายเขียนได้ เจ้าของอ่านอย่างเดียว — ไม่มีปุ่มแก้/ลบให้ใคร เพราะตารางเป็นแบบต่อท้ายอย่างเดียว
+// ทุกรายการ: ใครเขียน + ป้ายว่าเป็นเจ้าของหรือฝ่ายขาย + เมื่อไหร่ + ข้อความ · ใหม่ → เก่า
+// **V2 ข้อ 2: เจ้าของเขียนได้ด้วย** (migration 007 — feedback อาจารย์ 20 ต.ค. 2569:
+// เจ้าของต้องติดต่อฝ่ายขายได้ ไม่ใช่ดูอย่างเดียว) จึงเป็นช่องคุยกันบนการ์ดใบนั้น
+// ไม่มีปุ่มแก้/ลบให้ใคร เพราะตารางเป็นแบบต่อท้ายอย่างเดียว
 // (เขียนผิด → เขียนรายการใหม่ ทั้ง 2 รายการยังอยู่ จึงเป็นประวัติในตัว)
+// หมายเหตุของเจ้าของทำสีให้เด่น เพื่อให้ฝ่ายขายเห็นว่ามีเรื่องฝากไว้
 import { useState } from 'react'
 import { insertNote, NOTE_MAX_LEN } from '../lib/data.js'
 import { saveErrorKey } from '../lib/dbError.js'
 import { fmtStamp } from '../lib/format.js'
 import { useLang } from '../lib/i18n.js'
 
-export default function NotesPanel({ receivableId, notes, userNames, canWrite, onSaved }) {
+export default function NotesPanel({ receivableId, notes, userNames, userRoles, myRole, canWrite, onSaved }) {
   const { t, lang } = useLang()
   const [body, setBody] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const iAmOwner = myRole === 'owner'
 
   const submit = async (e) => {
     e.preventDefault()
@@ -46,19 +50,24 @@ export default function NotesPanel({ receivableId, notes, userNames, canWrite, o
         <div className="empty">{t('noNotes')}</div>
       ) : (
         <ul className="notes">
-          {notes.map((n) => (
-            <li key={n.id}>
-              <div className="note-head">
-                <b>{userNames[n.created_by] ?? t('unknownUser')}</b>
-                <span className="num">{fmtStamp(lang, n.created_at)}</span>
-              </div>
-              <p className="note-body">{n.body}</p>
-            </li>
-          ))}
+          {notes.map((n) => {
+            // role ของคนเขียนมาจาก profiles ที่หน้านี้โหลดไว้แล้ว (ไม่รู้ = ไม่ติดป้าย)
+            const role = userRoles?.[n.created_by]
+            return (
+              <li key={n.id} className={role === 'owner' ? 'from-owner' : undefined}>
+                <div className="note-head">
+                  <b>{userNames[n.created_by] ?? t('unknownUser')}</b>
+                  {role && <b className={'note-who ' + role}>{t(role === 'owner' ? 'byOwner' : 'bySales')}</b>}
+                  <span className="num">{fmtStamp(lang, n.created_at)}</span>
+                </div>
+                <p className="note-body">{n.body}</p>
+              </li>
+            )
+          })}
         </ul>
       )}
 
-      {/* เจ้าของอ่านอย่างเดียว (prd ข้อ 9) จึงไม่เห็นช่องเขียนเลย — สิทธิ์จริงบังคับด้วย RLS */}
+      {/* เจ้าของและฝ่ายขายเขียนได้ทั้งคู่ (prd ข้อ 9) — สิทธิ์จริงบังคับด้วย RLS */}
       {canWrite && (
         <form className="note-form" onSubmit={submit}>
           <div className="field">
@@ -67,7 +76,7 @@ export default function NotesPanel({ receivableId, notes, userNames, canWrite, o
               id="f-note"
               rows={3}
               maxLength={NOTE_MAX_LEN}
-              placeholder={t('notePlace')}
+              placeholder={t(iAmOwner ? 'notePlaceOwner' : 'notePlace')}
               value={body}
               onChange={(e) => {
                 setBody(e.target.value)
@@ -75,6 +84,7 @@ export default function NotesPanel({ receivableId, notes, userNames, canWrite, o
               }}
             />
             <p className="hint">
+              {iAmOwner ? t('noteOwnerHint') + ' · ' : ''}
               {t('noteRule')} · <span className="num">{t('noteLeft', { n: NOTE_MAX_LEN - body.length })}</span>
             </p>
           </div>

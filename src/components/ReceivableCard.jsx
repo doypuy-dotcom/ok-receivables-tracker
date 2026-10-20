@@ -20,6 +20,8 @@ function notePreview(body) {
 // onAddPay: ฝ่ายขายเท่านั้น และการ์ดที่ยังค้างเท่านั้น (ไม่ส่งมาก็ไม่มีปุ่ม) — V1 รอบ ก
 // note: หมายเหตุล่าสุดของการ์ดจาก view receivable_latest_note (ไม่มีหมายเหตุ = undefined) — V1 รอบ ข
 //       เจ้าของจึงเห็นสิ่งที่ฝ่ายขายรายงานโดยไม่ต้องกดเข้าหน้ารายละเอียด (prd.md ข้อ 5 รายการที่ 11)
+//       V2 ข้อ 2: ติดป้ายว่าใครเขียน และถ้ารายการล่าสุดเป็นของเจ้าของให้ทำสีให้เด่น
+//       (ฝ่ายขายต้องเห็นว่าเจ้าของฝากเรื่องไว้ โดยไม่ต้องเปิดการ์ดทุกใบ)
 export default function ReceivableCard({ row, note, onOpen, onSummary, onAddPay }) {
   const { t, lang } = useLang()
 
@@ -106,10 +108,15 @@ export default function ReceivableCard({ row, note, onOpen, onSummary, onAddPay 
         </div>
       )}
       {note && (
-        <div className="card-note">
+        <div className={'card-note' + (note.created_by_role === 'owner' ? ' from-owner' : '')}>
           <span className="status-tag">{t('notesH')}</span>
           <p>{notePreview(note.body)}</p>
-          <span className="num">{fmtStamp(lang, note.created_at)}</span>
+          <span className="note-meta">
+            <b className={'note-who ' + (note.created_by_role === 'owner' ? 'owner' : 'sales')}>
+              {t(note.created_by_role === 'owner' ? 'byOwner' : 'bySales')}
+            </b>
+            <span className="num">{fmtStamp(lang, note.created_at)}</span>
+          </span>
         </div>
       )}
     </article>

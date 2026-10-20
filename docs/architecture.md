@@ -104,6 +104,7 @@
 | ประวัติการแก้ไขครบ | trigger บนตารางหลัก เขียน `audit_logs` ทุก insert/update |
 | ห้ามแก้ role ตัวเอง | ไม่มี policy UPDATE บน `profiles` |
 | หมายเหตุและ feedback แก้/ลบไม่ได้ | ไม่มี policy UPDATE / DELETE บน `receivable_notes`, `app_feedback` (append-only — schema.md 3.6) |
+| เจ้าของเขียนได้แค่หมายเหตุ | policy INSERT ของ `receivable_notes` เปิดให้ทุก role ที่ `is_active` (007) ส่วน `companies` / `receivables` / `payments` ยังเป็น `my_role() = 'sales'` |
 | feedback เห็นได้แค่เจ้าของคำตอบ | policy SELECT ของ `app_feedback` คือ `user_id = auth.uid()` |
 
 ## 6. เวลาและวันที่
@@ -117,7 +118,8 @@
 - เปิด Realtime ให้ **5 ตาราง**: `companies`, `receivables`, `payments`, `audit_logs` ใน `004_realtime.sql`
   และ `receivable_notes` ใน `005_notes_and_feedback.sql`
   (`audit_logs` ด้วย เพราะ `"ข้อมูล ณ"` และประวัติการแก้ไขอ่านจากตารางนี้, `companies` เพราะชื่อบริษัทเปลี่ยนได้,
-  `receivable_notes` เพราะฝ่ายขายเขียนหมายเหตุบนคอมแล้วเจ้าของต้องเห็นบนมือถือทันที)
+  `receivable_notes` เพราะฝ่ายขายเขียนหมายเหตุบนคอมแล้วเจ้าของต้องเห็นบนมือถือทันที
+  และตั้งแต่ 007 เจ้าของก็เขียนได้ด้วย ฝ่ายขายจึงต้องเห็นของเจ้าของทันทีเหมือนกัน)
 - **`app_feedback` ไม่เปิด Realtime:** ไม่มีหน้าจอไหนต้องอัปเดตตาม และอ่านได้แค่แถวของตัวเอง
 - แอป subscribe การเปลี่ยนแปลง แล้ว**โหลดใหม่จาก view / ตาราง**
   (`receivable_summary`, `receivable_latest_note`, `payments`, `audit_logs`, `receivable_notes`)
