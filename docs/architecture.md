@@ -67,6 +67,15 @@
 3. แอป**กรองแถวตามเดือนที่เลือกและจัดรูปแบบเท่านั้น** ยอดรวม ลำดับ และวันที่ "ดู ณ"
    มาจาก database ทั้งหมด **ห้ามบวกหรือเทียบเงินใน JavaScript** (AGENTS.md)
 
+**อ่าน (เปิดหน้าสถิติ — V2)**
+1. แอปเรียก 5 view ของ `008` พร้อมกัน (`stats_overview`, `stats_collection_by_month`,
+   `stats_aging`, `stats_company_behavior`, `stats_company_balance` — schema.md ข้อ 4.5)
+   พร้อม `report_asof` ของ `006` สำหรับบรรทัด "ดู ณ"
+2. ทั้ง 5 view อ่านต่อจาก `stats_cards` → `receivable_summary` → RLS ของตารางจริงยังบังคับเหมือนเดิม
+3. แอป**เลือกแถวของเดือนที่กด เลือก 5 อันดับแรก และจัดรูปแบบตัวเลขเท่านั้น** —
+   ยอดเงิน, %, ค่าเฉลี่ย, การจัดกลุ่มอายุหนี้, ลำดับบริษัท และความกว้างของแถบกราฟ
+   มาจาก database ทั้งหมด **ห้ามคำนวณใน JavaScript** (AGENTS.md)
+
 **เขียน (ฝ่ายขายบันทึกการจ่าย)**
 1. แอปตรวจข้อมูลในฟอร์ม (ช่องว่าง, ยอดเกินคงเหลือ)
 2. insert ลง `payments`
@@ -142,6 +151,10 @@
 - โหลดใหม่ไม่สำเร็จเพราะไม่มีสัญญาณ → แสดงข้อความ "ไม่มีสัญญาณ" + ปุ่มลองอีกครั้ง **แทนตัวเลขเก่า** (เหมือนข้อ 8)
 - เป้าหมาย: ฝ่ายขายบันทึกบนมือถือ → หน้าจอเจ้าของอัปเดตโดยไม่ต้องรีเฟรช
 
+- **หน้าสถิติใช้ `useLiveReload` ตัวเดียวกัน** (V2 ข้อ 3) ไม่ต้องเพิ่มตารางใน publication เลย
+  เพราะ view ของ `008` อ่านต่อจาก `receivables` / `payments` / `companies` ที่ subscribe อยู่แล้ว
+  → ฝ่ายขายบันทึกการจ่าย ตัวเลขสถิติบนจอเจ้าของเปลี่ยนเองโดยไม่ต้องรีเฟรช
+
 ## 7.1 เลขเวอร์ชันของแอป
 
 - `src/lib/version.js` export `APP_VERSION` — **ที่เดียวในโปรเจกต์** (ตอนนี้ `V2`) เปลี่ยนที่นี่ทุกครั้งที่ส่งมอบเวอร์ชันใหม่
@@ -194,7 +207,7 @@ ok-receivables/
 ├── docs/                     prd, schema, architecture, implementation-plan, progress, ui-reference
 ├── supabase/
 │   ├── migrations/           001_*.sql, 002_*.sql … (รันตามลำดับ)
-│   ├── tests/                m1_checks.sql … v2_checks.sql (ตรวจ RLS / กฎ แบบ PASS/FAIL)
+│   ├── tests/                m1_checks.sql … stats_checks.sql (ตรวจ RLS / กฎ แบบ PASS/FAIL)
 │   ├── queries/              feedback_report.sql (สรุป feedback แยกตามเวอร์ชัน × role — อ่านอย่างเดียว)
 │   └── seed/                 test_data.sql (ข้อมูล [TEST]), cleanup_test_data.sql (ยกเลิก/ปิด [TEST])
 ├── vercel.json               rewrite ทุก path → index.html (react-router)
@@ -219,21 +232,24 @@ ok-receivables/
     │   ├── focus.js          โฟกัสช่องแรกบนเครื่องที่มีเมาส์
     │   └── i18n.js           ข้อความไทย/อังกฤษ
     ├── auth/                 หน้า login, ตัวจัดการ session/role
-    ├── pages/                ReceivablesPage, ReceivableDetailPage, MonthlyReportPage, LoginPage
+    ├── pages/                ReceivablesPage, ReceivableDetailPage, MonthlyReportPage,
+    │                         StatsPage (หน้าสถิติ), LoginPage
     ├── components/           Card, StatusBars, MonthFilter, EditHistory, Dialog,
     │                         ReceivableForm, PaymentForm, CompaniesDialog, CancelButton,
     │                         DateField (ช่องวันที่ของแอป), NotesPanel (หมายเหตุบนการ์ด),
     │                         FeedbackDialog (ส่งความคิดเห็น), UpdatePrompt (แถบ "มีแอปเวอร์ชันใหม่"),
-    │                         ReportSheet (กระดาษ A4 ของหน้าสรุปรายเดือน = DOM ที่ถูกถ่ายเป็นไฟล์)
+    │                         ReportSheet (กระดาษ A4 ของหน้าสรุปรายเดือน = DOM ที่ถูกถ่ายเป็นไฟล์),
+    │                         StatBar (แถบสัดส่วนของหน้าสถิติ — CSS ล้วน ไม่มีไลบรารีกราฟ)
     └── index.css             tokens สีและ CSS จาก ui-reference
 ```
 
 - ฟอร์มทุกตัวเป็น dialog ในแอป (`Dialog.jsx`) ไม่มี `window.alert / confirm / prompt`
   การยกเลิก (soft delete) ใช้ `CancelButton` แบบยืนยัน 2 ขั้นตาม ui-reference
 - ปุ่มเพิ่ม/แก้ไขแสดงเฉพาะ `role = sales` — เป็นเรื่องหน้าจอเท่านั้น สิทธิ์จริงอยู่ที่ RLS
-- **เมนู 2 หน้าใต้ส่วนหัว** (`SubNav` ใน `App.jsx`): "ตารางยอดค้าง" (`/`, รวม `/r/:id`)
-  และ "สรุปรายเดือน" (`/report`) — ทั้งเจ้าของและฝ่ายขายเข้าได้ทั้ง 2 หน้า
-  หน้าสรุปรายเดือนอ่านอย่างเดียวสำหรับทุกคน (ชั้น database ให้แต่สิทธิ์ `select` — schema.md ข้อ 4.3)
+- **เมนู 3 หน้าใต้ส่วนหัว** (`SubNav` ใน `App.jsx`): "ตารางยอดค้าง" (`/`, รวม `/r/:id`),
+  "สรุปรายเดือน" (`/report`) และ "สถิติ" (`/stats`) — ทั้งเจ้าของและฝ่ายขายเข้าได้ทั้ง 3 หน้า
+  **หน้าสรุปรายเดือนและหน้าสถิติอ่านอย่างเดียวสำหรับทุกคน** (ชั้น database ให้แต่สิทธิ์ `select`
+  — schema.md ข้อ 4.3 และ 4.5) ไม่ใช่แค่ไม่มีปุ่มบนหน้าจอ
 - `"ข้อมูล ณ"` = `max(audit_logs.created_at)` (ครอบคลุมทุกการเพิ่ม/แก้/ยกเลิก รวมการ์ดที่ถูกยกเลิก
   ซึ่งหายไปจาก `receivable_summary`)
 

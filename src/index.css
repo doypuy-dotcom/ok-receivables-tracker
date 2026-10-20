@@ -1605,3 +1605,99 @@ dialog::backdrop {
   color: #5a6971;
   text-align: right;
 }
+
+/* ---------------------------------------------------------------------------
+   V2 ข้อ 3 — หน้าสถิติ (/stats · migration 008)
+   แถบกราฟใช้ .bar / .track / .fill ชุดเดียวกับการ์ด จึงไม่มีสีหรือความสูงชุดใหม่
+   มือถือ = 1 คอลัมน์ทั้งหน้า ไม่มีการเลื่อนแนวนอน (ไม่มีตารางกว้างในหน้านี้)
+   --------------------------------------------------------------------------- */
+.stats-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+@media (min-width: 840px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* ส่วนที่เป็นรายชื่อบริษัท ใช้ความกว้างเต็มแถว แล้วแบ่งคอลัมน์ข้างในเอง */
+  .stats-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+/* บรรทัด "ดู ณ" และบรรทัดบอกข้อจำกัดของข้อมูล (มุมขวาของแถบควบคุม) */
+.st-meta {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* บรรทัดสรุปของแต่ละส่วน (ยอดค้างทั้งหมด / สัดส่วนรวมของ 5 อันดับ) */
+.st-sum {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.st-sum:last-child {
+  margin: 10px 0 0;
+}
+
+/* 3 ตัวเลขของส่วน 1: ต้องได้รับ / ได้รับแล้ว / คงเหลือ */
+.st-figs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.st-figs dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+.st-figs dd {
+  margin: 2px 0 0;
+  font-size: clamp(18px, 3.4vw, 22px);
+  font-weight: 700;
+}
+.st-figs dd.ok {
+  color: var(--green);
+}
+.st-figs dd.over {
+  color: var(--red);
+}
+
+/* ส่วน 3: 1 บริษัท = 1 บล็อก (ไม่ใช่ตารางหลายคอลัมน์) จึงอ่านบนมือถือได้ไม่ต้องเลื่อน */
+.st-cos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.st-cos > li {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.st-co-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 4px;
+}
+.st-co-head b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* ป้าย "ข้อมูลยังน้อย" — ใช้โครง .status-tag เดิม แต่ไม่เน้นสี เพราะไม่ใช่เรื่องเสียหาย */
+.status-tag.thin {
+  margin-bottom: 0;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+.sub.ok {
+  color: var(--green);
+}

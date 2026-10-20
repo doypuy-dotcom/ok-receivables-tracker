@@ -49,6 +49,13 @@ Project: OK receivables tracker (multi-user PWA). Read this file at the start of
   at all. Every report already excludes test data (`display_name` containing "ทดสอบ" and
   companies named `[TEST]%`), so a demo on a real account is the one way non-customer rows
   reach the success-criteria numbers. Create demo companies with the `[TEST]` prefix too.
+- **`[TEST]` is a reserved prefix: a real company must never be named `[TEST]...`.** The statistics
+  views (`stats_*`, migration `008`, schema.md 4.5) filter out `company_name like '[TEST]%'`, so a real
+  company named that way would silently disappear from every statistic while still showing up in the
+  table and the monthly report. Test and demo data must keep using the prefix. A consequence for tests:
+  a check that verifies statistics *arithmetic* cannot use `[TEST]` rows, so `stats_checks.sql` uses
+  `[TEST] stats ...` rows to prove the exclusion and separate `ZZ-STATS-CHECK <timestamp>` rows for the
+  numbers, both inside the rolled-back block, plus a final check that no `ZZ-STATS-CHECK` company survived.
 
 ## Hard rules — UI
 - `docs/ui-reference.html` is the approved UI. Match its layout, colors, texts and Thai/English labels.

@@ -8,8 +8,9 @@ import LoginPage from './pages/LoginPage.jsx'
 import MonthlyReportPage from './pages/MonthlyReportPage.jsx'
 import ReceivableDetailPage from './pages/ReceivableDetailPage.jsx'
 import ReceivablesPage from './pages/ReceivablesPage.jsx'
+import StatsPage from './pages/StatsPage.jsx'
 
-// เมนูหน้าจอ (V2): ตารางยอดค้าง / สรุปรายเดือน — ทั้ง owner และ sales เข้าได้ทั้ง 2 หน้า
+// เมนูหน้าจอ (V2): ตารางยอดค้าง / สรุปรายเดือน / สถิติ — ทั้ง owner และ sales เข้าได้ทั้ง 3 หน้า
 // หน้ารายละเอียดการ์ด (/r/:id) นับเป็นส่วนของหน้าตาราง จึงให้ลิงก์แรก active ด้วย
 function SubNav() {
   const { t } = useLang()
@@ -21,6 +22,9 @@ function SubNav() {
       </NavLink>
       <NavLink to="/report" className={cls}>
         {t('navReport')}
+      </NavLink>
+      <NavLink to="/stats" className={cls}>
+        {t('navStats')}
       </NavLink>
     </nav>
   )
@@ -67,6 +71,15 @@ export default function App() {
           element={
             <AppShell>
               <MonthlyReportPage />
+            </AppShell>
+          }
+        />
+        {/* หน้าสถิติ (V2 ข้อ 3) — อ่านอย่างเดียว เข้าได้ทั้ง owner และ sales */}
+        <Route
+          path="/stats"
+          element={
+            <AppShell>
+              <StatsPage />
             </AppShell>
           }
         />

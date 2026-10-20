@@ -210,3 +210,59 @@ export function fetchReportTotals() {
 export function fetchReportAsOf() {
   return supabase.from('report_asof').select('today,viewed_at').maybeSingle()
 }
+
+// ---------------------------------------------------------------------------
+// หน้าสถิติ (V2 — schema.md 4.5, migration 008)
+// อ่านอย่างเดียว ทั้ง owner และ sales · **ยอดเงิน / % / ค่าเฉลี่ย / การจัดกลุ่ม / ลำดับ
+// คำนวณใน view ทั้งหมด** แอปแค่เลือกแถวของเดือนที่ดู เลือกแสดง 5 อันดับแรก และจัดรูปแบบ
+// (ห้ามบวก / หาร / เทียบเงินหรือ % ใน JS แม้แต่ความกว้างของแถบ — AGENTS.md)
+// เงินและ % ขอเป็น text เหมือนทุกหน้า เพื่อไม่ให้ JSON แปลงเป็น float
+// ---------------------------------------------------------------------------
+
+// ภาพรวม 1 แถว: ยอดค้าง / ยอดเลยกำหนด ณ วันนี้ + data_since = วันของการ์ดใบแรกสุด
+// (บรรทัดบอกข้อจำกัดบนหน้าใช้ data_since ไม่ฮาร์ดโค้ดวันที่ไว้ในแอป)
+export function fetchStatsOverview() {
+  return supabase
+    .from('stats_overview')
+    .select(
+      'today,data_since,company_count,card_count,outstanding_total::text,outstanding_card_count,overdue_total::text,overdue_card_count',
+    )
+    .maybeSingle()
+}
+
+// ส่วน 1: เก็บเงินของเดือนนั้นได้กี่ % — 1 แถวต่อ 1 เดือนครบกำหนด
+// โหลดทุกเดือนครั้งเดียวเหมือนหน้ารายงาน แล้วเลือกแถวของเดือนที่ผู้ใช้กด
+// เดือนที่ไม่มีการ์ดเลยจะไม่มีแถว → หน้าจอแสดงสถานะว่าง ไม่ใช่เขียนเลข 0 เอง
+export function fetchStatsMonths() {
+  return supabase
+    .from('stats_collection_by_month')
+    .select('due_month,card_count,paid_card_count,due_total::text,collected_total::text,balance_total::text,collected_pct::text')
+    .order('due_month')
+}
+
+// ส่วน 2: อายุหนี้ค้าง ณ วันนี้ — 4 แถวคงที่เสมอ เรียงตาม bucket_order ของ view
+export function fetchStatsAging() {
+  return supabase
+    .from('stats_aging')
+    .select('bucket,bucket_order,balance_total::text,card_count,pct_of_outstanding::text')
+    .order('bucket_order')
+}
+
+// ส่วน 3: พฤติกรรมการจ่ายต่อบริษัท — เรียงตาม seq ของ view (ช้าสุดก่อน, ข้อมูลน้อยไปท้าย)
+export function fetchStatsBehavior() {
+  return supabase
+    .from('stats_company_behavior')
+    .select(
+      'seq,company_id,company_name,card_count,paid_card_count,on_time_count,late_card_count,on_time_pct::text,avg_late_days::text,max_late_days,overdue_now_count,overdue_now_total::text,open_card_count,open_total::text,is_thin',
+    )
+    .order('seq')
+}
+
+// ส่วน 4: ยอดค้างกระจุกที่ใคร — view ส่งทุกบริษัทที่ยังค้าง เรียงมาก → น้อย
+// แอปแสดง 5 อันดับแรก (seq <= 5) และใช้ cum_pct ของแถวสุดท้ายที่แสดงเป็นสัดส่วนรวมของกลุ่มนั้น
+export function fetchStatsBalance() {
+  return supabase
+    .from('stats_company_balance')
+    .select('seq,company_id,company_name,balance_total::text,open_card_count,overdue_card_count,pct_of_outstanding::text,cum_pct::text')
+    .order('seq')
+}
